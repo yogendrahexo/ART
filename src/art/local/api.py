@@ -1,10 +1,17 @@
 from openai import AsyncOpenAI
 import os
 import torch
+from transformers import AutoTokenizer
 
 from ..api import API
 from ..model import Model
-from ..types import Trajectory, Verbosity
+from ..types import BaseModel, Trajectory, TuneConfig, Verbosity
+from .grpo import GRPO
+from .pack import packed_tensors_from_tokenized_results, plot_packed_tensors
+from .model_configs import model_configs
+from .recipe import ComponentConfig, TuneRecipeConfig
+from .tokenize import tokenize_trajectory_groups
+from .tune import get_last_iteration_dir, tune
 from .vllm import kill_vllm_workers, start_vllm, vLLM
 
 
@@ -15,15 +22,17 @@ class LocalAPI(API):
         os.makedirs(self._path, exist_ok=True)
         self._vllm: vLLM | None = None
 
-    async def get_or_create_model(self, name: str, base_model: str) -> Model:
+    async def get_or_create_model(self, name: str, base_model: BaseModel) -> Model:
+        os.makedirs(f"{self._path}/models/{name}", exist_ok=True)
         return Model(api=self, name=name, base_model=base_model)
 
     async def _get_openai_client(
         self, model: Model, verbosity: Verbosity
     ) -> AsyncOpenAI:
         self._vllm = await start_vllm(
+            get_last_iteration_dir(f"{self._path}/models/{model.name}")
+            or model.base_model,
             model.base_model,
-            model.name,
             max_concurrent_requests=4096,
             env={"VLLM_ALLOW_LONG_MAX_MODEL_LEN": "1"},
             named_arguments=dict(
@@ -64,5 +73,50 @@ class LocalAPI(API):
         self,
         model: Model,
         trajectory_groups: list[list[Trajectory]],
-        verbosity: Verbosity,
-    ) -> None: ...
+        config: TuneConfig,
+    ) -> None:
+        tokenizer = AutoTokenizer.from_pretrained(model.base_model)
+        tokenized_results = list(
+            tokenize_trajectory_groups(tokenizer, trajectory_groups)
+        )
+        packed_tensors = packed_tensors_from_tokenized_results(
+            tokenized_results,
+            config.sequence_length,
+            pad_token_id=tokenizer.eos_token_id,  # type: ignore
+        )
+        if config.plot_tensors:
+            plot_packed_tensors(packed_tensors)
+        elif config.verbosity > 0:
+            print(f"Packed tensors with shape: {packed_tensors['tokens'].shape}")
+        model_config = model_configs[model.base_model]()
+        await tune(
+            model.base_model,
+            f"{self._path}/models/{model.name}",
+            packed_tensors,
+            model_config.tune_model,
+            model_config.tune_model_type,
+            config=TuneRecipeConfig(
+                optimizer=ComponentConfig(
+                    "torch.optim.AdamW",
+                    lr=config.lr,
+                    betas=config.betas,
+                    weight_decay=config.weight_decay,
+                    fused=True,
+                ),
+                loss=ComponentConfig(
+                    GRPO,
+                    clip_epsilon=config.clip_epsilon,
+                    entropy_coef=config.entropy_coef,
+                    kl_coef=config.kl_coef,
+                ),
+                shuffle=True,
+                batch_size=32768 // config.sequence_length,
+                fsdp_cpu_offload=True,
+                enable_activation_checkpointing=True,
+                enable_activation_offloading=True,
+                custom_sharded_layers=["tok_embeddings", "output"],
+                num_output_chunks=model_config.tune_num_output_chunks,
+                compile=True,
+            ),
+            verbosity=config.verbosity,
+        )

@@ -4,7 +4,7 @@ from openai import AsyncOpenAI
 from typing import AsyncGenerator, TYPE_CHECKING
 
 # from .openai import AsyncOpenAI
-from .types import Trajectory, Verbosity
+from .types import BaseModel, Trajectory, TuneConfig, Verbosity
 
 if TYPE_CHECKING:
     from .api import API
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class Model:
     api: "API"
     name: str
-    base_model: str
+    base_model: BaseModel
 
     @asynccontextmanager
     async def openai_client(
@@ -26,14 +26,15 @@ class Model:
         finally:
             await self.api._close_openai_client(client)
 
-    @property
-    def iteration(self) -> int:
+    async def get_iteration(self) -> int:
         return 0
 
     async def save_eval(self, trajectory_groups: list[list[Trajectory]]) -> None:
         await self.api._save_eval(self, trajectory_groups)
 
     async def tune(
-        self, trajectory_groups: list[list[Trajectory]], verbosity: Verbosity = 2
+        self,
+        trajectory_groups: list[list[Trajectory]],
+        config: TuneConfig = TuneConfig(),
     ) -> None:
-        await self.api._tune_model(self, trajectory_groups, verbosity)
+        await self.api._tune_model(self, trajectory_groups, config)

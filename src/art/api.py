@@ -3,7 +3,7 @@ from openai import AsyncOpenAI
 import os
 
 from .model import Model
-from .types import Trajectory, Verbosity
+from .types import BaseModel, Trajectory, TuneConfig, Verbosity
 
 
 class API:
@@ -14,7 +14,7 @@ class API:
             base_url = f"https://api.openpipe.ai/art/v1"
         self._client = httpx.AsyncClient(base_url=base_url)
 
-    async def get_or_create_model(self, name: str, base_model: str) -> Model:
+    async def get_or_create_model(self, name: str, base_model: BaseModel) -> Model:
         response = await self._client.post(
             "/models",
             json={"name": name, "base_model": base_model},
@@ -60,7 +60,7 @@ class API:
         self,
         model: Model,
         trajectory_groups: list[list[Trajectory]],
-        verbosity: Verbosity,
+        config: TuneConfig,
     ) -> None:
         response = await self._client.post(
             "/models/tune",

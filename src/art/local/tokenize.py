@@ -1,0 +1,182 @@
+from dataclasses import dataclass
+import math
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
+from typing import cast, Generator
+
+from ..types import Trajectory
+
+
+def tokenize_trajectory_groups(
+    tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+    trajectory_groups: list[list[Trajectory]],
+) -> Generator["TokenizedResult", None, None]:
+    for group in trajectory_groups:
+        if not group:
+            continue
+        # Calculate GRPO group mean and standard deviation
+        reward_mean = sum(trajectory.reward for trajectory in group) / len(group)
+        reward_std = math.sqrt(
+            sum((trajectory.reward - reward_mean) ** 2 for trajectory in group)
+            / len(group)
+        )
+        for trajectory in group:
+            # Calculate GRPO advantage for this trajectory
+            advantage = (trajectory.reward - reward_mean) / (reward_std + 1e-6)
+            conversation: list = [
+                (
+                    message_or_choice
+                    if isinstance(message_or_choice, dict)
+                    else {
+                        "role": "assistant",
+                        "content": message_or_choice.message.content,
+                    }
+                )
+                for message_or_choice in trajectory.messages
+            ]
+            chat_template = update_chat_template(tokenizer.get_chat_template())
+            chat = cast(
+                str,
+                tokenizer.apply_chat_template(
+                    conversation, chat_template=chat_template, tokenize=False
+                ),
+            )
+            tokenized_result = cast(
+                dict[str, list[int]],
+                tokenizer.apply_chat_template(
+                    conversation,
+                    chat_template=chat_template,
+                    return_dict=True,
+                    return_assistant_tokens_mask=True,
+                ),
+            )
+            logprobs = [float("nan")] * len(tokenized_result["input_ids"])
+            start = 0
+            end = 0
+
+            def update_assistant_range():
+                nonlocal start, end
+                start = end + tokenized_result["assistant_masks"][end:].index(1)
+                try:
+                    end = start + tokenized_result["assistant_masks"][start:].index(0)
+                except ValueError:
+                    end = len(tokenized_result["assistant_masks"])
+
+            for message_or_choice in trajectory.messages:
+                if isinstance(message_or_choice, dict):
+                    if message_or_choice["role"] == "assistant":
+                        update_assistant_range()
+                    continue
+                choice = message_or_choice
+                update_assistant_range()
+                assert choice.logprobs and (
+                    token_logprobs := choice.logprobs.content or choice.logprobs.refusal
+                ), "Chat completion choices must have logprobs"
+                tokenized_result["input_ids"][start:end] = [
+                    int(token_logprob.token.split(":")[1])
+                    for token_logprob in token_logprobs
+                ]
+                tokenized_result["assistant_masks"][start:end] = [
+                    1 for _ in token_logprobs
+                ]
+                logprobs[start:end] = [
+                    token_logprob.logprob for token_logprob in token_logprobs
+                ]
+            tokens = [
+                tokenizer.decode(token_id) for token_id in tokenized_result["input_ids"]
+            ]
+            yield TokenizedResult(
+                conversation=conversation,
+                reward=trajectory.reward,
+                advantage=advantage,
+                chat_template=chat_template,
+                chat=chat,
+                tokens=tokens,
+                token_ids=tokenized_result["input_ids"],
+                input_pos=list(range(len(tokens))),
+                assistant_mask=tokenized_result["assistant_masks"],
+                logprobs=logprobs,
+            )
+
+
+@dataclass
+class TokenizedResult:
+    conversation: list
+    reward: float
+    advantage: float
+    chat_template: str
+    chat: str
+    tokens: list[str]
+    token_ids: list[int]
+    input_pos: list[int]
+    assistant_mask: list[int]
+    logprobs: list[float]
+    prompt_id: int = 0
+    prompt_length: int = 0
+
+    def without_prompt(self) -> "TokenizedResult":
+        return TokenizedResult(
+            conversation=self.conversation,
+            advantage=self.advantage,
+            reward=self.reward,
+            chat_template=self.chat_template,
+            chat=self.chat,
+            tokens=self.tokens[self.prompt_length :],
+            token_ids=self.token_ids[self.prompt_length :],
+            input_pos=self.input_pos[self.prompt_length :],
+            assistant_mask=self.assistant_mask[self.prompt_length :],
+            logprobs=self.logprobs[self.prompt_length :],
+            prompt_id=self.prompt_id,
+            prompt_length=0,
+        )
+
+
+def update_chat_template(chat_template: str) -> str:
+    return (
+        chat_template
+        # Remove template logic that strips reasoning content from the chat messages
+        .replace(
+            "{% if '</think>' in content %}{% set content = content.split('</think>')[-1] %}{% endif %}",
+            "",
+        )
+        # Add generation tags for assistant token masking
+        .replace(
+            "{{'<｜Assistant｜>' + content + '<｜end▁of▁sentence｜>'}}",
+            "{{'<｜Assistant｜>'}}{% generation %}{{ content }}{% endgeneration %}{{'<｜end▁of▁sentence｜>'}}",
+        )
+        # Add generation tags for assistant token masking (for Hermes 2 Theta)
+        .replace(
+            "{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}",
+            "{{'<|im_start|>' + message['role'] + '\n'}}{% if message['role'] == 'assistant' %}{% generation %}{{ message['content'] }}{% endgeneration %}{% else %}{{ message['content'] }}{% endif %}{{'<|im_end|>' + '\n'}}",
+        )
+        # Add generation tags for assistant token masking (for Qwen 2.5 Instruct)
+        .replace(
+            """
+    {%- if (message.role == "user") or (message.role == "system" and not loop.first) or (message.role == "assistant" and not message.tool_calls) %}
+        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}
+    """.strip(),
+            """
+    {%- if (message.role == "user") or (message.role == "system" and not loop.first) %}
+        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}
+    {%- elif message.role == "assistant" and not message.tool_calls %}
+        {{- '<|im_start|>' + message.role + '\\n' }}{% generation %}{{ message.content }}{% endgeneration %}{{ '<|im_end|>' + '\\n' }}
+""".strip(),
+        ).replace(
+            """
+        {%- elif message.role == "assistant" %}
+        {{- '<|im_start|>' + message.role }}
+        {%- if message.content %}
+            {{- '\\n' + message.content }}
+        {%- endif %}""".strip(),
+            """
+        {%- elif message.role == "assistant" %}
+        {{- '<|im_start|>' + message.role }}
+        {%- if message.content %}
+            {{- '\\n' }}{% generation %}{{ message.content }}{% endgeneration %}
+        {%- endif %}""".strip(),
+        )
+        # Add generation tags for assistant token masking (for Llama 3.3 70B)
+        .replace(
+            "{{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n'+ message['content'] | trim + '<|eot_id|>' }}",
+            "{{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n' }}{%- if message['role'] == 'assistant' %}{% generation %}{{ message['content'] | trim + '<|eot_id|>' }}{% endgeneration %}{% else %}{{ message['content'] | trim + '<|eot_id|>' }}{% endif %}",
+        )
+    )
