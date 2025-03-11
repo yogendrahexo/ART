@@ -939,7 +939,7 @@ class AsyncCompletions(chat.AsyncCompletions):
                         )
                         for message in messages
                     ],
-                    "model": model,
+                    "model": model if isinstance(model, str) else model.name,
                     "audio": audio,
                     "frequency_penalty": frequency_penalty,
                     "function_call": function_call,

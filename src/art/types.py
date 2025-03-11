@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 from openai.types.chat.chat_completion import Choice
 
@@ -10,3 +10,4 @@ Messages = list[Message]
 class Trajectory:
     messages: Messages
     reward: float
+    metrics: dict[str, float] = field(default_factory=dict)
