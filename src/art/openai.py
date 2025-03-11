@@ -50,6 +50,7 @@ class AsyncOpenAI(openai.AsyncOpenAI):
     def __init__(
         self,
         *,
+        model: str,
         api_key: str | None = None,
         organization: str | None = None,
         project: str | None = None,
@@ -93,6 +94,8 @@ class AsyncOpenAI(openai.AsyncOpenAI):
             http_client=http_client,
             _strict_response_validation=_strict_response_validation,
         )
+        self.model = model
+        self.chat = AsyncChat(self)
 
 
 class AsyncChat(chat.AsyncChat):
@@ -107,7 +110,7 @@ class AsyncCompletions(chat.AsyncCompletions):
         self,
         *,
         messages: Iterable[Message],
-        model: "str | Model" = "",
+        model: "str | Model | None" = None,
         audio: Optional[ChatCompletionAudioParam] | NotGiven = NOT_GIVEN,
         frequency_penalty: Optional[float] | NotGiven = NOT_GIVEN,
         function_call: completion_create_params.FunctionCall | NotGiven = NOT_GIVEN,
@@ -365,7 +368,7 @@ class AsyncCompletions(chat.AsyncCompletions):
         self,
         *,
         messages: Iterable[Message],
-        model: str,
+        model: "str | Model | None" = None,
         stream: Literal[True],
         audio: Optional[ChatCompletionAudioParam] | NotGiven = NOT_GIVEN,
         frequency_penalty: Optional[float] | NotGiven = NOT_GIVEN,
@@ -623,7 +626,7 @@ class AsyncCompletions(chat.AsyncCompletions):
         self,
         *,
         messages: Iterable[Message],
-        model: str,
+        model: "str | Model | None" = None,
         stream: bool,
         audio: Optional[ChatCompletionAudioParam] | NotGiven = NOT_GIVEN,
         frequency_penalty: Optional[float] | NotGiven = NOT_GIVEN,
@@ -881,7 +884,7 @@ class AsyncCompletions(chat.AsyncCompletions):
         self,
         *,
         messages: Iterable[Message],
-        model: "str | Model" = "",
+        model: "str | Model | None" = None,
         audio: Optional[ChatCompletionAudioParam] | NotGiven = NOT_GIVEN,
         frequency_penalty: Optional[float] | NotGiven = NOT_GIVEN,
         function_call: completion_create_params.FunctionCall | NotGiven = NOT_GIVEN,
@@ -939,7 +942,15 @@ class AsyncCompletions(chat.AsyncCompletions):
                         )
                         for message in messages
                     ],
-                    "model": model if isinstance(model, str) else model.name,
+                    "model": (
+                        model
+                        if isinstance(model, str)
+                        else (
+                            getattr(self._client, "model", None)
+                            if model is None
+                            else model.name
+                        )
+                    ),
                     "audio": audio,
                     "frequency_penalty": frequency_penalty,
                     "function_call": function_call,
