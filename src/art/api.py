@@ -9,7 +9,7 @@ from .vllm import kill_vllm_workers, start_vllm, vLLM
 
 @dataclass
 class API:
-    vllm: vLLM | None = None
+    _vllm: vLLM | None = None
 
     async def get_or_create_model(self, name: str, base_model: str) -> Model:
         return Model(api=self, name=name, base_model=base_model)
@@ -17,7 +17,7 @@ class API:
     async def _get_openai_client(
         self, model: Model, verbosity: Verbosity
     ) -> AsyncOpenAI:
-        self.vllm = await start_vllm(
+        self._vllm = await start_vllm(
             model.base_model,
             model.name,
             max_concurrent_requests=4096,
@@ -46,6 +46,6 @@ class API:
 
     async def _close_openai_client(self, client: AsyncOpenAI) -> None:
         await client.close()
-        if self.vllm:
-            self.vllm.process.terminate()
+        if self._vllm:
+            self._vllm.process.terminate()
             kill_vllm_workers()
