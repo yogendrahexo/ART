@@ -18,4 +18,4 @@ if ! git pull; then
 fi
 
 # Launch the cluster
-sky launch cluster.yaml -c art --env-file .env -y "$@"
+uv run sky launch skypilot-config.yaml -c art --env-file .env -y "$@"
