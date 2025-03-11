@@ -7,14 +7,16 @@ from typing import Any, Coroutine, Iterable, Iterator, TypeVar
 
 
 from .tqdm import tqdm
-from .types import Trajectory
+
+
+T = TypeVar("T")
 
 
 async def gather_groups(
-    groups: Iterable[Iterable[Coroutine[Any, Any, Trajectory]]],
+    groups: Iterable[Iterable[Coroutine[Any, Any, T]]],
     *,
     pbar_desc: str | None = None,
-) -> list[list[Trajectory]]:
+) -> list[list[T]]:
     groups = [list(g) for g in groups]
     context = GroupsContext(
         pbar=tqdm.tqdm(desc=pbar_desc, total=sum(len(g) for g in groups))
@@ -28,30 +30,29 @@ async def gather_groups(
     return result_groups
 
 
-async def wrap_coroutine(coro: Coroutine[Any, Any, Trajectory]) -> Trajectory:
+async def wrap_coroutine(coro: Coroutine[Any, Any, T]) -> T:
     result = await coro
     context = get_groups_context()
-    context.total_metrics["reward"] += result.metrics["reward"]  # type: ignore
-    for metric in result.metrics:
-        context.total_metrics[metric] += result.metrics[metric]  # type: ignore
-    context.total_metric_reports.update(result.metrics)
-    if context.pbar is not None:
-        context.pbar.update(1)
-        context.pbar.set_postfix(
-            {
-                metric: context.total_metrics[metric]
-                / context.total_metric_reports[metric]
-                for metric in context.total_metrics
-            }
-        )
+    context.update_pbar(n=1)
     return result
 
 
 @dataclass
 class GroupsContext:
     pbar: tqdm.tqdm | None = None
-    total_metrics: Counter[str] = field(default_factory=Counter)
-    total_metric_reports: Counter[str] = field(default_factory=Counter)
+    metric_sums: Counter[str] = field(default_factory=Counter)
+    metric_divisors: Counter[str] = field(default_factory=Counter)
+
+    def update_pbar(self, n: int) -> None:
+        if self.pbar is not None:
+            self.pbar.update(n)
+            self.pbar.set_postfix(
+                {
+                    metric: self.metric_sums[metric]
+                    / max(1, self.metric_divisors[metric])
+                    for metric in self.metric_sums
+                }
+            )
 
 
 groups_context_var = contextvars.ContextVar("groups_context", default=GroupsContext())

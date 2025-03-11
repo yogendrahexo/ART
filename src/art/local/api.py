@@ -32,7 +32,7 @@ class LocalAPI(API):
         self._vllm = await start_vllm(
             get_last_iteration_dir(f"{self._path}/models/{model.name}")
             or model.base_model,
-            model.base_model,
+            model.name,
             max_concurrent_requests=4096,
             env={"VLLM_ALLOW_LONG_MAX_MODEL_LEN": "1"},
             named_arguments=dict(
@@ -53,11 +53,7 @@ class LocalAPI(API):
             timeout=360 + 15 * torch.cuda.device_count(),
             verbosity=verbosity,
         )
-        return AsyncOpenAI(
-            # model=model.name,
-            api_key="default",
-            base_url="http://localhost:8000/v1",
-        )
+        return self._vllm.client
 
     async def _close_openai_client(self, client: AsyncOpenAI) -> None:
         await client.close()

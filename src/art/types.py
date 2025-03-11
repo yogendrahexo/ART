@@ -1,7 +1,10 @@
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 from openai.types.chat.chat_completion import Choice
 import pydantic
-from typing import Literal
+from pydantic import model_validator
+from typing import Any, Literal, Self
+
+from .gather_groups import get_groups_context
 
 BaseModel = Literal[
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
@@ -22,6 +25,15 @@ class Trajectory(pydantic.BaseModel):
     messages: MessagesAndChoices
     reward: float
     metrics: dict[str, float] = {}
+
+    @model_validator(mode="after")
+    def record_metrics(self) -> Self:
+        groups_context = get_groups_context()
+        groups_context.metric_sums["reward"] += self.reward  # type: ignore
+        groups_context.metric_divisors["reward"] += 1
+        groups_context.metric_sums.update(self.metrics)
+        groups_context.metric_divisors.update(self.metrics.keys())
+        return self
 
 
 class TuneConfig(pydantic.BaseModel):
