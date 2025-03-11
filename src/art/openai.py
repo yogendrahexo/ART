@@ -879,7 +879,7 @@ class AsyncCompletions(chat.AsyncCompletions):
         """
         ...
 
-    @required_args(["messages", "model"], ["messages", "model", "stream"])
+    @required_args(["messages"], ["messages", "stream"])
     async def create(
         self,
         *,

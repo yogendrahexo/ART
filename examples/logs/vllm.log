@@ -1,0 +1,147 @@
+INFO 03-11 03:54:46 __init__.py:207] Automatically detected platform cuda.
+INFO 03-11 03:54:46 api_server.py:912] vLLM API server version 0.7.3
+INFO 03-11 03:54:46 api_server.py:913] args: Namespace(subparser='serve', model_tag='Qwen/Qwen2.5-7B-Instruct', config='', host=None, port=8000, uvicorn_log_level='info', allow_credentials=False, allowed_origins=['*'], allowed_methods=['*'], allowed_headers=['*'], api_key='default', lora_modules=None, prompt_adapters=None, chat_template=None, chat_template_content_format='auto', response_role='assistant', ssl_keyfile=None, ssl_certfile=None, ssl_ca_certs=None, ssl_cert_reqs=0, root_path=None, middleware=[], return_tokens_as_token_ids=True, disable_frontend_multiprocessing=False, enable_request_id_headers=False, enable_auto_tool_choice=False, enable_reasoning=False, reasoning_parser=None, tool_call_parser=None, tool_parser_plugin='', model='Qwen/Qwen2.5-7B-Instruct', task='auto', tokenizer=None, skip_tokenizer_init=False, revision=None, code_revision=None, tokenizer_revision=None, tokenizer_mode='auto', trust_remote_code=False, allowed_local_media_path=None, download_dir=None, load_format='auto', config_format=<ConfigFormat.AUTO: 'auto'>, dtype='auto', kv_cache_dtype='auto', max_model_len=16384, guided_decoding_backend='xgrammar', logits_processor_pattern=None, model_impl='auto', distributed_executor_backend=None, pipeline_parallel_size=1, tensor_parallel_size=1, max_parallel_loading_workers=None, ray_workers_use_nsight=False, block_size=32, enable_prefix_caching=True, disable_sliding_window=False, use_v2_block_manager=True, num_lookahead_slots=0, seed=0, swap_space=80.0, cpu_offload_gb=0, gpu_memory_utilization=0.95, num_gpu_blocks_override=None, max_num_batched_tokens=16384, max_num_partial_prefills=1, max_long_partial_prefills=1, long_prefill_token_threshold=0, max_num_seqs=4096, max_logprobs=20, disable_log_stats=False, quantization=None, rope_scaling=None, rope_theta=None, hf_overrides=None, enforce_eager=True, max_seq_len_to_capture=8192, disable_custom_all_reduce=False, tokenizer_pool_size=0, tokenizer_pool_type='ray', tokenizer_pool_extra_config=None, limit_mm_per_prompt=None, mm_processor_kwargs=None, disable_mm_preprocessor_cache=False, enable_lora=False, enable_lora_bias=False, max_loras=1, max_lora_rank=16, lora_extra_vocab_size=256, lora_dtype='auto', long_lora_scaling_factors=None, max_cpu_loras=None, fully_sharded_loras=False, enable_prompt_adapter=False, max_prompt_adapters=1, max_prompt_adapter_token=0, device='auto', num_scheduler_steps=16, multi_step_stream_outputs=True, scheduler_delay_factor=0.0, enable_chunked_prefill=None, speculative_model=None, speculative_model_quantization=None, num_speculative_tokens=None, speculative_disable_mqa_scorer=False, speculative_draft_tensor_parallel_size=None, speculative_max_model_len=None, speculative_disable_by_batch_size=None, ngram_prompt_lookup_max=None, ngram_prompt_lookup_min=None, spec_decoding_acceptance_method='rejection_sampler', typical_acceptance_sampler_posterior_threshold=None, typical_acceptance_sampler_posterior_alpha=None, disable_logprobs_during_spec_decoding=None, model_loader_extra_config=None, ignore_patterns=[], preemption_mode='swap', served_model_name=['temporal-clue'], qlora_adapter_name_or_path=None, otlp_traces_endpoint=None, collect_detailed_traces=None, disable_async_output_proc=False, scheduling_policy='fcfs', scheduler_cls='vllm.core.scheduler.Scheduler', override_neuron_config=None, override_pooler_config=None, compilation_config=None, kv_transfer_config=None, worker_cls='auto', generation_config=None, override_generation_config=None, enable_sleep_mode=False, calculate_kv_scales=False, additional_config=None, disable_log_requests=True, max_log_len=None, disable_fastapi_docs=False, enable_prompt_tokens_details=False, dispatch_function=<function ServeSubcommand.cmd at 0x7cdce2fcf880>)
+INFO 03-11 03:54:46 api_server.py:209] Started engine process with PID 10626
+INFO 03-11 03:54:52 __init__.py:207] Automatically detected platform cuda.
+INFO 03-11 03:54:53 config.py:549] This model supports multiple tasks: {'generate', 'classify', 'reward', 'embed', 'score'}. Defaulting to 'generate'.
+WARNING 03-11 03:54:53 cuda.py:95] To see benefits of async output processing, enable CUDA graph. Since, enforce-eager is enabled, async output processor cannot be used
+WARNING 03-11 03:54:53 config.py:685] Async output processing is not supported on the current platform type cuda.
+INFO 03-11 03:54:58 config.py:549] This model supports multiple tasks: {'classify', 'score', 'embed', 'generate', 'reward'}. Defaulting to 'generate'.
+WARNING 03-11 03:54:58 cuda.py:95] To see benefits of async output processing, enable CUDA graph. Since, enforce-eager is enabled, async output processor cannot be used
+WARNING 03-11 03:54:58 config.py:685] Async output processing is not supported on the current platform type cuda.
+INFO 03-11 03:54:58 llm_engine.py:234] Initializing a V0 LLM engine (v0.7.3) with config: model='Qwen/Qwen2.5-7B-Instruct', speculative_config=None, tokenizer='Qwen/Qwen2.5-7B-Instruct', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, override_neuron_config=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=16384, download_dir=None, load_format=LoadFormat.AUTO, tensor_parallel_size=1, pipeline_parallel_size=1, disable_custom_all_reduce=False, quantization=None, enforce_eager=True, kv_cache_dtype=auto,  device_config=cuda, decoding_config=DecodingConfig(guided_decoding_backend='xgrammar'), observability_config=ObservabilityConfig(otlp_traces_endpoint=None, collect_model_forward_time=False, collect_model_execute_time=False), seed=0, served_model_name=temporal-clue, num_scheduler_steps=16, multi_step_stream_outputs=True, enable_prefix_caching=True, chunked_prefill_enabled=False, use_async_output_proc=False, disable_mm_preprocessor_cache=False, mm_processor_kwargs=None, pooler_config=None, compilation_config={"splitting_ops":[],"compile_sizes":[],"cudagraph_capture_sizes":[],"max_capture_size":0}, use_cached_outputs=True, 
+INFO 03-11 03:55:00 cuda.py:229] Using Flash Attention backend.
+WARNING 03-11 03:55:00 registry.py:335] `mm_limits` has already been set for model=Qwen/Qwen2.5-7B-Instruct, and will be overwritten by the new values.
+INFO 03-11 03:55:00 model_runner.py:1110] Starting to load model Qwen/Qwen2.5-7B-Instruct...
+INFO 03-11 03:55:01 weight_utils.py:254] Using model weights format ['*.safetensors']
+Loading safetensors checkpoint shards:   0% Completed | 0/4 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards:  25% Completed | 1/4 [00:00<00:01,  1.87it/s]
+Loading safetensors checkpoint shards:  50% Completed | 2/4 [00:01<00:01,  1.58it/s]
+Loading safetensors checkpoint shards:  75% Completed | 3/4 [00:01<00:00,  1.55it/s]
+Loading safetensors checkpoint shards: 100% Completed | 4/4 [00:02<00:00,  1.52it/s]
+Loading safetensors checkpoint shards: 100% Completed | 4/4 [00:02<00:00,  1.56it/s]
+
+INFO 03-11 03:55:04 model_runner.py:1115] Loading model weights took 14.2487 GB
+INFO 03-11 03:55:06 worker.py:267] Memory profiling takes 2.04 seconds
+INFO 03-11 03:55:06 worker.py:267] the current vLLM instance can use total_gpu_memory (39.38GiB) x gpu_memory_utilization (0.95) = 37.41GiB
+INFO 03-11 03:55:06 worker.py:267] model weights take 14.25GiB; non_torch_memory takes 0.09GiB; PyTorch activation peak memory takes 22.16GiB; the rest of the memory reserved for KV Cache is 0.91GiB.
+INFO 03-11 03:55:06 executor_base.py:111] # cuda blocks: 532, # CPU blocks: 46811
+INFO 03-11 03:55:06 executor_base.py:116] Maximum concurrency for 16384 tokens per request: 1.04x
+INFO 03-11 03:56:40 llm_engine.py:436] init engine (profile, create kv cache, warmup model) took 96.24 seconds
+INFO 03-11 03:56:41 api_server.py:958] Starting vLLM API server on http://0.0.0.0:8000
+INFO 03-11 03:56:41 launcher.py:23] Available routes are:
+INFO 03-11 03:56:41 launcher.py:31] Route: /openapi.json, Methods: GET, HEAD
+INFO 03-11 03:56:41 launcher.py:31] Route: /docs, Methods: GET, HEAD
+INFO 03-11 03:56:41 launcher.py:31] Route: /docs/oauth2-redirect, Methods: GET, HEAD
+INFO 03-11 03:56:41 launcher.py:31] Route: /redoc, Methods: GET, HEAD
+INFO 03-11 03:56:41 launcher.py:31] Route: /health, Methods: GET
+INFO 03-11 03:56:41 launcher.py:31] Route: /ping, Methods: GET, POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /tokenize, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /detokenize, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /v1/models, Methods: GET
+INFO 03-11 03:56:41 launcher.py:31] Route: /version, Methods: GET
+INFO 03-11 03:56:41 launcher.py:31] Route: /v1/chat/completions, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /v1/completions, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /v1/embeddings, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /pooling, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /score, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /v1/score, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /v1/audio/transcriptions, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /rerank, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /v1/rerank, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /v2/rerank, Methods: POST
+INFO 03-11 03:56:41 launcher.py:31] Route: /invocations, Methods: POST
+INFO:     Started server process [10550]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO 03-11 03:56:48 chat_utils.py:332] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+INFO 03-11 03:56:48 metrics.py:455] Avg prompt throughput: 4.7 tokens/s, Avg generation throughput: 0.2 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 03-11 03:56:48 metrics.py:471] Prefix cache hit rate: GPU: 0.00%, CPU: 0.00%
+INFO:     127.0.0.1:59648 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 03:56:58 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 03-11 03:56:58 metrics.py:471] Prefix cache hit rate: GPU: 0.00%, CPU: 0.00%
+INFO 03-11 03:59:15 metrics.py:455] Avg prompt throughput: 365.4 tokens/s, Avg generation throughput: 0.1 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 15.2%, CPU KV cache usage: 0.0%.
+INFO 03-11 03:59:15 metrics.py:471] Prefix cache hit rate: GPU: 0.00%, CPU: 0.00%
+WARNING 03-11 03:59:17 scheduler.py:1754] Sequence group chatcmpl-364cee9f8e304171af865ffff96a3a12 is preempted by PreemptionMode.SWAP mode because there is not enough KV cache space. This can affect the end-to-end performance. Increase gpu_memory_utilization or tensor_parallel_size to provide more KV cache memory. total_num_cumulative_preemption=1
+INFO 03-11 03:59:20 metrics.py:455] Avg prompt throughput: 5160.9 tokens/s, Avg generation throughput: 563.3 tokens/s, Running: 18 reqs, Swapped: 2 reqs, Pending: 980 reqs, GPU KV cache usage: 98.7%, CPU KV cache usage: 0.1%.
+INFO 03-11 03:59:20 metrics.py:471] Prefix cache hit rate: GPU: 47.57%, CPU: 37.28%
+INFO 03-11 03:59:25 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 728.1 tokens/s, Running: 13 reqs, Swapped: 7 reqs, Pending: 980 reqs, GPU KV cache usage: 99.8%, CPU KV cache usage: 0.7%.
+INFO 03-11 03:59:25 metrics.py:471] Prefix cache hit rate: GPU: 47.57%, CPU: 27.44%
+INFO:     127.0.0.1:46766 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 03:59:31 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 435.4 tokens/s, Running: 9 reqs, Swapped: 10 reqs, Pending: 981 reqs, GPU KV cache usage: 88.2%, CPU KV cache usage: 0.9%.
+INFO 03-11 03:59:31 metrics.py:471] Prefix cache hit rate: GPU: 47.84%, CPU: 43.72%
+INFO:     127.0.0.1:46726 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46742 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 03:59:36 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 472.5 tokens/s, Running: 8 reqs, Swapped: 9 reqs, Pending: 983 reqs, GPU KV cache usage: 95.1%, CPU KV cache usage: 0.9%.
+INFO 03-11 03:59:36 metrics.py:471] Prefix cache hit rate: GPU: 44.20%, CPU: 48.91%
+INFO 03-11 03:59:42 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 362.2 tokens/s, Running: 8 reqs, Swapped: 9 reqs, Pending: 983 reqs, GPU KV cache usage: 96.1%, CPU KV cache usage: 0.8%.
+INFO 03-11 03:59:42 metrics.py:471] Prefix cache hit rate: GPU: 45.16%, CPU: 51.81%
+INFO:     127.0.0.1:46760 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46696 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 03:59:47 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 271.4 tokens/s, Running: 9 reqs, Swapped: 6 reqs, Pending: 985 reqs, GPU KV cache usage: 95.1%, CPU KV cache usage: 0.7%.
+INFO 03-11 03:59:47 metrics.py:471] Prefix cache hit rate: GPU: 44.06%, CPU: 58.55%
+INFO:     127.0.0.1:46684 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46710 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46748 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46720 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 03:59:53 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 317.2 tokens/s, Running: 9 reqs, Swapped: 2 reqs, Pending: 989 reqs, GPU KV cache usage: 82.7%, CPU KV cache usage: 0.4%.
+INFO 03-11 03:59:53 metrics.py:471] Prefix cache hit rate: GPU: 40.54%, CPU: 63.69%
+INFO:     127.0.0.1:46774 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46862 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46858 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 03:59:58 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 578.4 tokens/s, Running: 7 reqs, Swapped: 1 reqs, Pending: 990 reqs, GPU KV cache usage: 85.7%, CPU KV cache usage: 0.2%.
+INFO 03-11 03:59:58 metrics.py:471] Prefix cache hit rate: GPU: 41.96%, CPU: 63.69%
+INFO:     127.0.0.1:46806 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46830 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 04:00:03 metrics.py:455] Avg prompt throughput: 235.8 tokens/s, Avg generation throughput: 377.2 tokens/s, Running: 6 reqs, Swapped: 1 reqs, Pending: 993 reqs, GPU KV cache usage: 96.4%, CPU KV cache usage: 0.1%.
+INFO 03-11 04:00:03 metrics.py:471] Prefix cache hit rate: GPU: 39.86%, CPU: 62.11%
+INFO:     127.0.0.1:46874 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46888 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46782 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46792 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46844 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 04:00:08 metrics.py:455] Avg prompt throughput: 3079.6 tokens/s, Avg generation throughput: 666.8 tokens/s, Running: 15 reqs, Swapped: 1 reqs, Pending: 984 reqs, GPU KV cache usage: 99.4%, CPU KV cache usage: 0.1%.
+INFO 03-11 04:00:08 metrics.py:471] Prefix cache hit rate: GPU: 42.85%, CPU: 60.97%
+INFO:     127.0.0.1:46816 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 04:00:13 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 794.8 tokens/s, Running: 13 reqs, Swapped: 2 reqs, Pending: 985 reqs, GPU KV cache usage: 95.9%, CPU KV cache usage: 0.1%.
+INFO 03-11 04:00:13 metrics.py:471] Prefix cache hit rate: GPU: 42.97%, CPU: 62.67%
+INFO:     127.0.0.1:46946 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 04:00:19 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 585.4 tokens/s, Running: 10 reqs, Swapped: 4 reqs, Pending: 986 reqs, GPU KV cache usage: 96.2%, CPU KV cache usage: 0.3%.
+INFO 03-11 04:00:19 metrics.py:471] Prefix cache hit rate: GPU: 42.93%, CPU: 61.45%
+INFO:     127.0.0.1:46900 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46896 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 04:00:24 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 452.5 tokens/s, Running: 9 reqs, Swapped: 3 reqs, Pending: 987 reqs, GPU KV cache usage: 95.1%, CPU KV cache usage: 0.3%.
+INFO 03-11 04:00:24 metrics.py:471] Prefix cache hit rate: GPU: 42.81%, CPU: 61.14%
+INFO:     127.0.0.1:46920 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 04:00:29 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 442.1 tokens/s, Running: 7 reqs, Swapped: 3 reqs, Pending: 989 reqs, GPU KV cache usage: 91.4%, CPU KV cache usage: 0.2%.
+INFO 03-11 04:00:29 metrics.py:471] Prefix cache hit rate: GPU: 42.39%, CPU: 62.37%
+INFO:     127.0.0.1:46964 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46960 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46978 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46912 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47004 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46926 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 04:00:34 metrics.py:455] Avg prompt throughput: 1443.5 tokens/s, Avg generation throughput: 444.5 tokens/s, Running: 10 reqs, Swapped: 0 reqs, Pending: 989 reqs, GPU KV cache usage: 92.7%, CPU KV cache usage: 0.0%.
+INFO 03-11 04:00:34 metrics.py:471] Prefix cache hit rate: GPU: 40.92%, CPU: 61.80%
+INFO:     127.0.0.1:46930 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47018 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46980 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47026 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46988 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 04:00:39 metrics.py:455] Avg prompt throughput: 3094.6 tokens/s, Avg generation throughput: 649.2 tokens/s, Running: 14 reqs, Swapped: 2 reqs, Pending: 984 reqs, GPU KV cache usage: 96.1%, CPU KV cache usage: 0.1%.
+INFO 03-11 04:00:39 metrics.py:471] Prefix cache hit rate: GPU: 42.05%, CPU: 60.58%
+INFO 03-11 04:00:45 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 592.2 tokens/s, Running: 11 reqs, Swapped: 5 reqs, Pending: 984 reqs, GPU KV cache usage: 97.7%, CPU KV cache usage: 0.6%.
+INFO 03-11 04:00:45 metrics.py:471] Prefix cache hit rate: GPU: 41.57%, CPU: 56.58%
+INFO 03-11 04:00:50 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 500.6 tokens/s, Running: 7 reqs, Swapped: 9 reqs, Pending: 984 reqs, GPU KV cache usage: 90.4%, CPU KV cache usage: 0.8%.
+INFO 03-11 04:00:50 metrics.py:471] Prefix cache hit rate: GPU: 41.57%, CPU: 54.79%
+INFO:     127.0.0.1:47074 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47032 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47036 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47040 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47056 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 04:00:55 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 335.4 tokens/s, Running: 9 reqs, Swapped: 2 reqs, Pending: 989 reqs, GPU KV cache usage: 95.7%, CPU KV cache usage: 0.2%.
+INFO 03-11 04:00:55 metrics.py:471] Prefix cache hit rate: GPU: 40.18%, CPU: 54.79%
+INFO:     127.0.0.1:47064 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 03-11 04:01:00 metrics.py:455] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 454.6 tokens/s, Running: 8 reqs, Swapped: 2 reqs, Pending: 990 reqs, GPU KV cache usage: 99.6%, CPU KV cache usage: 0.2%.
+INFO 03-11 04:01:00 metrics.py:471] Prefix cache hit rate: GPU: 40.00%, CPU: 56.35%
+WARNING 03-11 04:01:00 scheduler.py:1754] Sequence group chatcmpl-03361aa0b2584a94a5a7b30fc99ad138 is preempted by PreemptionMode.SWAP mode because there is not enough KV cache space. This can affect the end-to-end performance. Increase gpu_memory_utilization or tensor_parallel_size to provide more KV cache memory. total_num_cumulative_preemption=51
