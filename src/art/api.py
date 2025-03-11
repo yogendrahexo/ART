@@ -1,51 +1,72 @@
-from dataclasses import dataclass
-import torch
+import httpx
+from openai import AsyncOpenAI
+import os
 
 from .model import Model
-from .openai import AsyncOpenAI
-from .types import Verbosity
-from .vllm import kill_vllm_workers, start_vllm, vLLM
+from .types import Trajectory, Verbosity
 
 
-@dataclass
 class API:
-    _vllm: vLLM | None = None
+    def __init__(self, *, base_url: str | httpx.URL | None = None) -> None:
+        if base_url is None:
+            base_url = os.environ.get("ART_BASE_URL")
+        if base_url is None:
+            base_url = f"https://api.openpipe.ai/art/v1"
+        self._client = httpx.AsyncClient(base_url=base_url)
 
     async def get_or_create_model(self, name: str, base_model: str) -> Model:
+        response = await self._client.post(
+            "/models",
+            json={"name": name, "base_model": base_model},
+        )
+        response.raise_for_status()
         return Model(api=self, name=name, base_model=base_model)
 
     async def _get_openai_client(
         self, model: Model, verbosity: Verbosity
     ) -> AsyncOpenAI:
-        self._vllm = await start_vllm(
-            model.base_model,
-            model.name,
-            max_concurrent_requests=4096,
-            env={"VLLM_ALLOW_LONG_MAX_MODEL_LEN": "1"},
-            named_arguments=dict(
-                block_size=32,
-                disable_log_requests=True,
-                enable_prefix_caching=True,
-                enforce_eager=True,
-                gpu_memory_utilization=0.95,
-                max_model_len=16384,
-                max_num_seqs=4096,
-                max_num_batched_tokens=16384,
-                num_scheduler_steps=16,
-                preemption_mode="swap",
-                return_tokens_as_token_ids=True,
-                swap_space=80,
-                tensor_parallel_size=torch.cuda.device_count(),
-            ),
-            timeout=360 + 15 * torch.cuda.device_count(),
-            verbosity=verbosity,
+        response = await self._client.post(
+            f"/openai_clients", json={"model": model.name}
         )
-        return AsyncOpenAI(
-            model=model.name, api_key="default", base_url="http://localhost:8000/v1"
-        )
+        response.raise_for_status()
+        return AsyncOpenAI(**response.json())
 
     async def _close_openai_client(self, client: AsyncOpenAI) -> None:
-        await client.close()
-        if self._vllm:
-            self._vllm.process.terminate()
-            kill_vllm_workers()
+        response = await self._client.post(
+            f"/openai_clients/close",
+            json={
+                "api_key": client.api_key,
+                "organization": client.organization,
+                "project": client.project,
+                "base_url": client.base_url,
+            },
+        )
+        response.raise_for_status()
+
+    async def _save_eval(
+        self, model: Model, trajectory_groups: list[list[Trajectory]]
+    ) -> None:
+        response = await self._client.post(
+            "/evals",
+            json={
+                "model": model.name,
+                "iteration": model.iteration,
+                "trajectory_groups": trajectory_groups,
+            },
+        )
+        response.raise_for_status()
+
+    async def _tune_model(
+        self,
+        model: Model,
+        trajectory_groups: list[list[Trajectory]],
+        verbosity: Verbosity,
+    ) -> None:
+        response = await self._client.post(
+            "/models/tune",
+            json={
+                "model": model.name,
+                "trajectory_groups": trajectory_groups,
+            },
+        )
+        response.raise_for_status()

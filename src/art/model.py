@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from openai import AsyncOpenAI
 from typing import AsyncGenerator, TYPE_CHECKING
 
-from .openai import AsyncOpenAI
+# from .openai import AsyncOpenAI
 from .types import Trajectory, Verbosity
 
 if TYPE_CHECKING:
@@ -29,6 +30,10 @@ class Model:
     def iteration(self) -> int:
         return 0
 
-    async def save_eval(self, trajectory_groups: list[list[Trajectory]]) -> None: ...
+    async def save_eval(self, trajectory_groups: list[list[Trajectory]]) -> None:
+        await self.api._save_eval(self, trajectory_groups)
 
-    async def tune(self, trajectory_groups: list[list[Trajectory]]) -> None: ...
+    async def tune(
+        self, trajectory_groups: list[list[Trajectory]], verbosity: Verbosity = 2
+    ) -> None:
+        await self.api._tune_model(self, trajectory_groups, verbosity)

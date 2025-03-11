@@ -9,8 +9,8 @@ import sys
 import re
 from typing import Any, IO, Optional
 
-from .openai import AsyncOpenAI
-from .types import Verbosity
+from ..openai import AsyncOpenAI
+from ..types import Verbosity
 
 
 @dataclass
