@@ -17,6 +17,8 @@ Install the dependencies:
 uv sync
 ```
 
+Then you follow the SkyPilot or Local Training instructions below.
+
 ### SkyPilot
 
 Copy the `.env.example` file to `.env` and set the environment variables:
@@ -58,4 +60,6 @@ uv add torchtune
 
 Now you can run the "Temporal Clue" example in `/examples/temporal-clue.ipynb`.
 
-It has been tested with the Hermes 2 Theta Llama 3 8B model on a 1xH100 instance. You should see immediate improvement in `val/reward` after one iteration.
+It has been tested with the Hermes 2 Theta Llama 3 8B model on a 1xH100 instance.
+
+You should see immediate improvement in `val/reward` after one iteration.
