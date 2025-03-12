@@ -27,6 +27,18 @@ class LocalAPI(API):
         wandb_entity: str | None = None,
         wandb_project: str | None = None,
     ) -> None:
+        """
+        Initializes a local, directory-based API interface at the given path.
+
+        Note:
+            The local API uses Weights & Biases for training monitoring.
+            If you don't have a W&B account, you can create one at https://wandb.ai.
+
+        Args:
+            path: The path to the local directory. Defaults to "./.art".
+            wandb_entity: The preferred Weights & Biases entity.
+            wandb_project: The preferred Weights & Biases project.
+        """
         self._path = path
         os.makedirs(self._path, exist_ok=True)
         self._wandb_entity = wandb_entity
@@ -35,6 +47,16 @@ class LocalAPI(API):
         self._wandb_runs: dict[str, Run] = {}
 
     async def get_or_create_model(self, name: str, base_model: BaseModel) -> Model:
+        """
+        Retrieves an existing model or creates a new one.
+
+        Args:
+            name: The model's name.
+            base_model: The model's base model.
+
+        Returns:
+            Model: A model instance.
+        """
         os.makedirs(self._get_output_dir(name), exist_ok=True)
         return Model(api=self, name=name, base_model=base_model)
 

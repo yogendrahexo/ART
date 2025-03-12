@@ -8,7 +8,39 @@ from .types import BaseModel, Trajectory, TuneConfig, Verbosity
 
 
 class API:
-    def __init__(self, *, base_url: str | httpx.URL | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        api_key: str | None = None,
+        base_url: str | httpx.URL | None = None,
+    ) -> None:
+        """
+        Initializes an Agent Reinforcement Training (ART) API interface.
+
+        Args:
+            api_key: The API key to use. Will check the `ART_API_KEY` and
+                `OPENPIPE_API_KEY` environment variables if not provided.
+            base_url: The base API URL. Defaults to OpenPipe's ART API. Will check
+                the `ART_BASE_URL` environment variable if not provided.
+
+        Example:
+            ```python
+            import art
+
+            api = art.API()
+            model = await api.get_or_create_model(
+                name="my-model",
+                base_model="Qwen/Qwen2.5-7B-Instruct",
+            )
+            ```
+        """
+        if api_key is None:
+            api_key = os.environ.get("ART_API_KEY")
+        if api_key is None:
+            api_key = os.environ.get("OPENPIPE_API_KEY")
+        assert (
+            api_key is not None
+        ), "The api_key option must be set either by passing api_key to the API constructor or by setting the ART_API_KEY or OPENPIPE_API_KEY environment variable"
         if base_url is None:
             base_url = os.environ.get("ART_BASE_URL")
         if base_url is None:
@@ -16,6 +48,16 @@ class API:
         self._client = httpx.AsyncClient(base_url=base_url)
 
     async def get_or_create_model(self, name: str, base_model: BaseModel) -> Model:
+        """
+        Retrieves an existing model or creates a new one.
+
+        Args:
+            name: The model's name.
+            base_model: The model's base model.
+
+        Returns:
+            Model: A model instance.
+        """
         response = await self._client.post(
             "/models",
             json={"name": name, "base_model": base_model},
