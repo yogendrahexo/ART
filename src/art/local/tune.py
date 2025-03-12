@@ -1,6 +1,6 @@
 import asyncio
+from collections import Counter
 import glob
-
 from omegaconf import OmegaConf
 import os
 import re
@@ -47,20 +47,19 @@ def get_last_iteration_dir(output_dir: str) -> str | None:
     return last_iteration_dir if os.path.exists(last_iteration_dir) else None
 
 
-def last_tune_log(output_dir: str) -> list[dict[str, float]]:
+def get_last_tune_metrics(output_dir: str) -> dict[str, float]:
     sorted_logs = sorted(glob.glob(f"{output_dir}/logs/*"))
     contents = open(sorted_logs[-1]).read()
     lines = contents.strip().splitlines()
-    parsed_logs = []
+    metrics = Counter()
+    metric_occurrences = Counter()
     for line in lines:
-        step_part, metrics_part = line.split(" | ")
-        step = int(step_part.split()[1])
-        metrics = {}
+        _, metrics_part = line.split(" | ")
         for metric in metrics_part.split():
             key, value = metric.split(":")
-            metrics[key] = float(value)
-        parsed_logs.append({"step": step, **metrics})
-    return parsed_logs
+            metrics[key] += float(value)  # type: ignore
+            metric_occurrences[key] += 1
+    return {metric: metrics[metric] / metric_occurrences[metric] for metric in metrics}
 
 
 async def tune(
