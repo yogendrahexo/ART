@@ -402,5 +402,3 @@ setup: |
   # Unfortunate workaround because of a cli tool naming conflict
   uv remove torchtune
   uv add torchtune
-  # Move ./.gcloud.json to ~/.gcloud.json
-  mv ./.gcloud.json ~/.gcloud.json
