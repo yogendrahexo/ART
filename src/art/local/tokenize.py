@@ -36,17 +36,23 @@ def tokenize_trajectory_groups(
                 )
                 for message_or_choice in trajectory.messages_and_choices
             ]
-            chat_template = update_chat_template(tokenizer.get_chat_template())
+            chat_template = update_chat_template(
+                tokenizer.get_chat_template("tool_use" if trajectory.tools else None)
+            )
             chat = cast(
                 str,
                 tokenizer.apply_chat_template(
-                    conversation, chat_template=chat_template, tokenize=False
+                    conversation,
+                    tools=list(trajectory.tools) if trajectory.tools else None,  # type: ignore
+                    chat_template=chat_template,
+                    tokenize=False,
                 ),
             )
             tokenized_result = cast(
                 dict[str, list[int]],
                 tokenizer.apply_chat_template(
                     conversation,
+                    tools=list(trajectory.tools) if trajectory.tools else None,  # type: ignore
                     chat_template=chat_template,
                     return_dict=True,
                     return_assistant_tokens_mask=True,
@@ -207,4 +213,94 @@ def update_chat_template(chat_template: str) -> str:
             "{{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n'+ message['content'] | trim + '<|eot_id|>' }}",
             "{{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n' }}{%- if message['role'] == 'assistant' %}{% generation %}{{ message['content'] | trim + '<|eot_id|>' }}{% endgeneration %}{% else %}{{ message['content'] | trim + '<|eot_id|>' }}{% endif %}",
         )
+        # Add generation tags for assistant token masking (for Hermes 3 w/tool use)
+        .replace(
+            hermes3_old_with_tool_use,
+            hermes3_new_with_tool_use,
+        )
     )
+
+
+hermes3_old = """{{bos_token}}{% for message in messages %}{% if loop.first and messages[0]['role'] != 'system' %}{{ '<|im_start|>system
+You are a helpful assistant.<|im_end|>
+' }}{% endif %}{{'<|im_start|>' + message['role'] + '
+' + message['content'] + '<|im_end|>' + '
+'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant
+' }}{% endif %}"""
+
+
+hermes3_new = """{{bos_token}}{% for message in messages %}{% if loop.first and messages[0]['role'] != 'system' %}{{ '<|im_start|>system
+You are a helpful assistant.<|im_end|>
+' }}{% endif %}{{'<|im_start|>' + message['role'] + '
+' + message['content'] + '<|im_end|>' + '
+'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant
+' }}{% endif %}"""
+
+
+hermes3_old_with_tool_use = """    {%- if message.role == "user" or message.role == "system" or (message.role == "assistant" and message.tool_calls is not defined) %}
+        {{- '<|im_start|>' + message.role + '
+' + message.content + '<|im_end|>' + '
+' }}
+    {%- elif message.role == "assistant" %}
+        {{- '<|im_start|>' + message.role }}
+    {%- for tool_call in message.tool_calls %}
+       {{- '
+<tool_call>
+' }}           {%- if tool_call.function is defined %}
+                {%- set tool_call = tool_call.function %}
+            {%- endif %}
+            {{- '{' }}
+            {{- '"name": "' }}
+            {{- tool_call.name }}
+            {{- '"' }}
+            {{- ', '}}
+            {%- if tool_call.arguments is defined %}
+                {{- '"arguments": ' }}
+                {%- if tool_call.arguments is string %}
+                    {{- tool_call.arguments }}
+                {%- else %}
+                    {{- tool_call.arguments|tojson }}
+                {%- endif %}
+            {%- endif %}
+             {{- '}' }}
+            {{- '
+</tool_call>' }}
+    {%- endfor %}
+        {{- '<|im_end|>
+' }}"""
+
+hermes3_new_with_tool_use = """    {%- if message.role == "user" or message.role == "system" %}
+        {{- '<|im_start|>' + message.role + '
+' + message.content + '<|im_end|>' + '
+' }}
+    {%- elif message.role == "assistant" and message.tool_calls is not defined %}
+        {{- '<|im_start|>' + message.role + '
+' }}{% generation %}{{ message.content + '<|im_end|>' }}{% endgeneration %}{{ '
+' }}
+    {%- elif message.role == "assistant" %}
+        {{- '<|im_start|>' + message.role }}
+    {%- for tool_call in message.tool_calls %}{% generation %}
+       {{- '
+<tool_call>
+' }}           {%- if tool_call.function is defined %}
+                {%- set tool_call = tool_call.function %}
+            {%- endif %}
+            {{- '{' }}
+            {{- '"name": "' }}
+            {{- tool_call.name }}
+            {{- '"' }}
+            {{- ', '}}
+            {%- if tool_call.arguments is defined %}
+                {{- '"arguments": ' }}
+                {%- if tool_call.arguments is string %}
+                    {{- tool_call.arguments }}
+                {%- else %}
+                    {{- tool_call.arguments|tojson }}
+                {%- endif %}
+            {%- endif %}
+             {{- '}' }}
+            {{- '
+</tool_call>' }}
+    {%- endgeneration %}{% endfor %}
+        {{- '<|im_end|>
+' }}"""

@@ -18,13 +18,17 @@ class Model:
 
     @asynccontextmanager
     async def openai_client(
-        self, estimated_token_usage: int = 1024, verbosity: Verbosity = 1
+        self,
+        estimated_token_usage: int = 1024,
+        tool_use: bool = False,
+        verbosity: Verbosity = 1,
     ) -> AsyncGenerator[AsyncOpenAI, None]:
         """
         Context manager for an OpenAI client to a managed inference service.
 
         Args:
             estimated_token_usage: Estimated token usage per request.
+            tool_use: Whether to enable tool use.
             verbosity: Verbosity level.
 
         Yields:
@@ -38,7 +42,7 @@ class Model:
                 )
         """
         client, semaphore = await self.api._get_openai_client(
-            self, estimated_token_usage, verbosity
+            self, estimated_token_usage, tool_use, verbosity
         )
         try:
             yield patch_openai(client, semaphore)

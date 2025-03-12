@@ -14,6 +14,7 @@ from .gather_groups import get_groups_context
 BaseModel = Literal[
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
     "NousResearch/Hermes-2-Theta-Llama-3-8B",
+    "NousResearch/Hermes-3-Llama-3.1-8B",
     "Qwen/Qwen2.5-14B-Instruct",
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
     "Qwen/Qwen2.5-32B-Instruct",
@@ -32,6 +33,7 @@ class Trajectory(pydantic.BaseModel):
     messages_and_choices: MessagesAndChoices
     reward: float
     metrics: dict[str, float] = {}
+    tools: Tools | None = None
 
     @model_validator(mode="after")
     def record_metrics(self) -> Self:

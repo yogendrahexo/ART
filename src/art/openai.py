@@ -1119,7 +1119,7 @@ async def consume_chat_completion_stream(
                 if choice.message.tool_calls is None:
                     choice.message.tool_calls = []
                 for tool_call in chunk_choice.delta.tool_calls:
-                    if not tool_call.index in range(len(choice.message.tool_calls)):
+                    while not tool_call.index in range(len(choice.message.tool_calls)):
                         choice.message.tool_calls.append(
                             ChatCompletionMessageToolCall(
                                 id="",
@@ -1127,13 +1127,14 @@ async def consume_chat_completion_stream(
                                 type="function",
                             )
                         )
-                    choice.message.tool_calls[tool_call.index].id += tool_call.id or ""
-                    choice.message.tool_calls[tool_call.index].function.name += (
+                    choice.message.tool_calls[tool_call.index].id = tool_call.id or ""
+                    choice.message.tool_calls[tool_call.index].function.name = (
                         tool_call.function.name or "" if tool_call.function else ""
                     )
-                    choice.message.tool_calls[tool_call.index].function.arguments += (
-                        tool_call.function.arguments or "" if tool_call.function else ""
-                    )
+                    if tool_call.function and tool_call.function.arguments is not None:
+                        choice.message.tool_calls[
+                            tool_call.index
+                        ].function.arguments += tool_call.function.arguments
             if getattr(chunk_choice.delta, "reasoning", None):
                 if not hasattr(choice.message, "reasoning"):
                     setattr(choice.message, "reasoning", "")

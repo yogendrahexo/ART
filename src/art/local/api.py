@@ -53,6 +53,7 @@ class LocalAPI(API):
         Args:
             name: The model's name.
             base_model: The model's base model.
+            tool_use: Whether to enable tool use.
 
         Returns:
             Model: A model instance.
@@ -70,13 +71,19 @@ class LocalAPI(API):
         return get_iteration(self._get_output_dir(model.name))
 
     async def _get_openai_client(
-        self, model: Model, estimated_token_usage: int, verbosity: Verbosity
+        self,
+        model: Model,
+        estimated_token_usage: int,
+        tool_use: bool,
+        verbosity: Verbosity,
     ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
+        model_config = model_configs[model.base_model]()
         self._vllm = await start_vllm(
             get_last_iteration_dir(self._get_output_dir(model.name))
             or model.base_model,
             model.name,
             max_concurrent_requests=4096,
+            env={"CUDA_LAUNCH_BLOCKING": "1"},
             named_arguments=dict(
                 block_size=32,
                 disable_log_requests=True,
@@ -91,6 +98,8 @@ class LocalAPI(API):
                 return_tokens_as_token_ids=True,
                 swap_space=80,
                 tensor_parallel_size=torch.cuda.device_count(),
+                enable_auto_tool_choice=tool_use,
+                tool_call_parser=model_config.vllm_tool_call_parser,
             ),
             timeout=360 + 15 * torch.cuda.device_count(),
             verbosity=verbosity,

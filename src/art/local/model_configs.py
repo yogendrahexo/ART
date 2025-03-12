@@ -22,6 +22,7 @@ class ModelConfig:
     tune_model_type: str
     tune_model: Callable[[], TransformerDecoder]
     tune_num_output_chunks: int
+    vllm_tool_call_parser: str | None
 
     def __post_init__(self) -> None:
         assert (
@@ -37,6 +38,7 @@ def distilled_qwen_7b() -> ModelConfig:
         tune_model_type="QWEN2",
         tune_model=qwen2_5_7b_base,
         tune_num_output_chunks=8,
+        vllm_tool_call_parser=None,
     )
 
 
@@ -48,6 +50,19 @@ def theta_8b() -> ModelConfig:
         tune_model_type="LLAMA3",
         tune_model=llama3_1_8b,
         tune_num_output_chunks=8,
+        vllm_tool_call_parser="hermes",
+    )
+
+
+def hermes_8b() -> ModelConfig:
+    """NousResearch/Hermes-3-Llama-3.1-8B model config."""
+    return ModelConfig(
+        base_model="NousResearch/Hermes-3-Llama-3.1-8B",
+        min_gpus=1,
+        tune_model_type="LLAMA3",
+        tune_model=llama3_1_8b,
+        tune_num_output_chunks=8,
+        vllm_tool_call_parser="hermes",
     )
 
 
@@ -59,6 +74,7 @@ def qwen_14b() -> ModelConfig:
         tune_model_type="QWEN2",
         tune_model=qwen2_5_14b_instruct,
         tune_num_output_chunks=2,
+        vllm_tool_call_parser="hermes",
     )
 
 
@@ -70,6 +86,7 @@ def distilled_qwen_14b() -> ModelConfig:
         tune_model_type="QWEN2",
         tune_model=qwen2_5_14b_base,
         tune_num_output_chunks=2,
+        vllm_tool_call_parser=None,
     )
 
 
@@ -81,6 +98,7 @@ def qwen_32b() -> ModelConfig:
         tune_model_type="QWEN2",
         tune_model=qwen2_5_32b_instruct,
         tune_num_output_chunks=2,
+        vllm_tool_call_parser="hermes",
     )
 
 
@@ -92,6 +110,7 @@ def distilled_qwen_32b() -> ModelConfig:
         tune_model_type="QWEN2",
         tune_model=qwen2_5_32b_base,
         tune_num_output_chunks=2,
+        vllm_tool_call_parser=None,
     )
 
 
@@ -103,6 +122,7 @@ def llama_70b() -> ModelConfig:
         tune_model_type="LLAMA3",
         tune_model=llama3_1_70b,
         tune_num_output_chunks=2,
+        vllm_tool_call_parser=None,
     )
 
 
@@ -114,6 +134,7 @@ def distilled_llama_70b() -> ModelConfig:
         tune_model_type="LLAMA3",
         tune_model=llama3_1_70b,
         tune_num_output_chunks=8,
+        vllm_tool_call_parser=None,
     )
 
 
@@ -125,12 +146,14 @@ def qwen_72b() -> ModelConfig:
         tune_model_type="QWEN2",
         tune_model=qwen2_5_72b_instruct,
         tune_num_output_chunks=2,
+        vllm_tool_call_parser="hermes",
     )
 
 
 model_configs = {
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B": distilled_qwen_7b,
     "NousResearch/Hermes-2-Theta-Llama-3-8B": theta_8b,
+    "NousResearch/Hermes-3-Llama-3.1-8B": hermes_8b,
     "Qwen/Qwen2.5-14B-Instruct": qwen_14b,
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B": distilled_qwen_14b,
     "Qwen/Qwen2.5-32B-Instruct": qwen_32b,
