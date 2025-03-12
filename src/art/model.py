@@ -31,8 +31,10 @@ class Model:
     async def get_iteration(self) -> int:
         return await self.api._get_iteration(self)
 
-    async def save_eval(self, trajectory_groups: list[list[Trajectory]]) -> None:
-        await self.api._save_eval(self, trajectory_groups)
+    async def save(
+        self, trajectory_groups: list[list[Trajectory]], name: str = "val"
+    ) -> None:
+        await self.api._save(self, trajectory_groups, name)
 
     async def tune(
         self,

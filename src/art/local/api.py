@@ -83,7 +83,7 @@ class LocalAPI(API):
             self._vllm.process.terminate()
             kill_vllm_workers()
 
-    async def _save_eval(
+    async def _save(
         self,
         model: Model,
         trajectory_groups: list[list[Trajectory]],
@@ -117,7 +117,7 @@ class LocalAPI(API):
         trajectory_groups: list[list[Trajectory]],
         config: TuneConfig,
     ) -> None:
-        await self._save_eval(model, trajectory_groups, "train")
+        await self._save(model, trajectory_groups, "train")
         tokenizer = AutoTokenizer.from_pretrained(model.base_model)
         tokenized_results = list(
             tokenize_trajectory_groups(tokenizer, trajectory_groups)

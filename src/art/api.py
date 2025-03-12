@@ -54,14 +54,15 @@ class API:
         )
         response.raise_for_status()
 
-    async def _save_eval(
-        self, model: Model, trajectory_groups: list[list[Trajectory]]
+    async def _save(
+        self, model: Model, trajectory_groups: list[list[Trajectory]], name: str
     ) -> None:
         response = await self._client.post(
             "/evals",
             json={
                 "model": model.name,
                 "trajectory_groups": trajectory_groups,
+                "name": name,
             },
         )
         response.raise_for_status()
