@@ -1,0 +1,6 @@
+__pycache__/
+.art/
+# .env
+.venv/
+logs/
+wandb/
