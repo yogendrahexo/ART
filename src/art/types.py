@@ -22,7 +22,7 @@ MessagesAndChoices = list[MessageOrChoice]
 
 
 class Trajectory(pydantic.BaseModel):
-    messages: MessagesAndChoices
+    messages_and_choices: MessagesAndChoices
     reward: float
     metrics: dict[str, float] = {}
 

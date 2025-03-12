@@ -3,7 +3,7 @@ from .gather_groups import gather_groups
 from .local import LocalAPI
 from .model import Model
 from .openai import AsyncOpenAI
-from .types import Messages, Trajectory, TuneConfig
+from .types import Messages, MessagesAndChoices, Trajectory, TuneConfig
 
 __all__ = [
     "API",
@@ -11,6 +11,7 @@ __all__ = [
     "gather_groups",
     "LocalAPI",
     "Messages",
+    "MessagesAndChoices",
     "Model",
     "Trajectory",
     "TuneConfig",

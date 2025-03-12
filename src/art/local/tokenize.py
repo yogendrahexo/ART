@@ -34,7 +34,7 @@ def tokenize_trajectory_groups(
                         "content": message_or_choice.message.content,
                     }
                 )
-                for message_or_choice in trajectory.messages
+                for message_or_choice in trajectory.messages_and_choices
             ]
             chat_template = update_chat_template(tokenizer.get_chat_template())
             chat = cast(
@@ -64,7 +64,7 @@ def tokenize_trajectory_groups(
                 except ValueError:
                     end = len(tokenized_result["assistant_masks"])
 
-            for message_or_choice in trajectory.messages:
+            for message_or_choice in trajectory.messages_and_choices:
                 if isinstance(message_or_choice, dict):
                     if message_or_choice["role"] == "assistant":
                         update_assistant_range()
