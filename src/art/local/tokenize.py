@@ -213,6 +213,11 @@ def update_chat_template(chat_template: str) -> str:
             "{{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n'+ message['content'] | trim + '<|eot_id|>' }}",
             "{{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n' }}{%- if message['role'] == 'assistant' %}{% generation %}{{ message['content'] | trim + '<|eot_id|>' }}{% endgeneration %}{% else %}{{ message['content'] | trim + '<|eot_id|>' }}{% endif %}",
         )
+        # Add generation tags for assistant token masking (for Hermes 3)
+        .replace(
+            hermes3_old,
+            hermes3_new,
+        )
         # Add generation tags for assistant token masking (for Hermes 3 w/tool use)
         .replace(
             hermes3_old_with_tool_use,
@@ -232,7 +237,7 @@ You are a helpful assistant.<|im_end|>
 hermes3_new = """{{bos_token}}{% for message in messages %}{% if loop.first and messages[0]['role'] != 'system' %}{{ '<|im_start|>system
 You are a helpful assistant.<|im_end|>
 ' }}{% endif %}{{'<|im_start|>' + message['role'] + '
-' + message['content'] + '<|im_end|>' + '
+'}}{% if message['role'] == 'assistant' %}{% generation %}{{ message['content'] + '<|im_end|>' }}{% endgeneration %}{% else %}{{ message['content'] + '<|im_end|>' }}{% endif %}{{ '
 '}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant
 ' }}{% endif %}"""
 
