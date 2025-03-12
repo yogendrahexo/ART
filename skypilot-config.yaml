@@ -386,7 +386,7 @@ resources:
 envs:
   GIT_USER_NAME: "Your Name"
   GIT_USER_EMAIL: "your.email@example.com"
-  GITHUB_TOKEN:
+  GITHUB_TOKEN: ""
 setup: |
   # Configure git user name and email
   git config --global user.name "${GIT_USER_NAME}"
