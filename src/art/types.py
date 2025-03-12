@@ -1,8 +1,13 @@
-from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 from openai.types.chat.chat_completion import Choice
+from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
+from openai.types.chat.chat_completion_message_tool_call_param import (
+    ChatCompletionMessageToolCallParam,
+)
+from openai.types.chat.chat_completion_tool_param import ChatCompletionToolParam
+
 import pydantic
 from pydantic import model_validator
-from typing import Literal, Self
+from typing import Iterable, Literal, Self
 
 from .gather_groups import get_groups_context
 
@@ -19,6 +24,8 @@ Message = ChatCompletionMessageParam  # | Choice
 MessageOrChoice = Message | Choice
 Messages = list[Message]
 MessagesAndChoices = list[MessageOrChoice]
+ToolCall = ChatCompletionMessageToolCallParam
+Tools = Iterable[ChatCompletionToolParam]
 
 
 class Trajectory(pydantic.BaseModel):
