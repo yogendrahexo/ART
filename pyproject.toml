@@ -25,5 +25,5 @@ dev-dependencies = [
     "black>=25.1.0",
     "ipykernel>=6.29.5",
     "ipywidgets>=8.1.5",
-    "skypilot[do,gcp,lambda]>=0.8.0",
+    "skypilot[aws,cudo,do,fluidstack,gcp,lambda,paperspace,runpod]>=0.8.0",
 ]
