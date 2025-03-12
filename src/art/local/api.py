@@ -12,7 +12,7 @@ from .pack import packed_tensors_from_tokenized_results, plot_packed_tensors
 from .model_configs import model_configs
 from .recipe import ComponentConfig, TuneRecipeConfig
 from .tokenize import tokenize_trajectory_groups
-from .tune import get_last_iteration_dir, tune
+from .tune import get_iteration, get_last_iteration_dir, tune
 from .vllm import kill_vllm_workers, start_vllm, vLLM
 
 
@@ -27,6 +27,9 @@ class LocalAPI(API):
         os.makedirs(f"{self._path}/models/{name}", exist_ok=True)
         return Model(api=self, name=name, base_model=base_model)
 
+    async def _get_iteration(self, model: Model) -> int:
+        return get_iteration(f"{self._path}/models/{model.name}")
+
     async def _get_openai_client(
         self, model: Model, estimated_token_usage: int, verbosity: Verbosity
     ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
@@ -35,14 +38,15 @@ class LocalAPI(API):
             or model.base_model,
             model.name,
             max_concurrent_requests=4096,
-            env={"VLLM_ALLOW_LONG_MAX_MODEL_LEN": "1"},
+            # env={"VLLM_ALLOW_LONG_MAX_MODEL_LEN": "1"},
             named_arguments=dict(
                 block_size=32,
                 disable_log_requests=True,
+                enable_chunked_prefill=True,
                 enable_prefix_caching=True,
                 enforce_eager=True,
                 gpu_memory_utilization=0.95,
-                max_model_len=16384,
+                # max_model_len=16384,
                 max_num_seqs=4096,
                 max_num_batched_tokens=16384,
                 num_scheduler_steps=16,

@@ -18,7 +18,7 @@ class Model:
 
     @asynccontextmanager
     async def openai_client(
-        self, estimated_token_usage: int = 1024, verbosity: Verbosity = 2
+        self, estimated_token_usage: int = 1024, verbosity: Verbosity = 1
     ) -> AsyncGenerator[AsyncOpenAI, None]:
         client, semaphore = await self.api._get_openai_client(
             self, estimated_token_usage, verbosity
@@ -29,7 +29,7 @@ class Model:
             await self.api._close_openai_client(client)
 
     async def get_iteration(self) -> int:
-        return 0
+        return await self.api._get_iteration(self)
 
     async def save_eval(self, trajectory_groups: list[list[Trajectory]]) -> None:
         await self.api._save_eval(self, trajectory_groups)

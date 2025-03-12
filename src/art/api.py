@@ -23,6 +23,13 @@ class API:
         response.raise_for_status()
         return Model(api=self, name=name, base_model=base_model)
 
+    async def _get_iteration(self, model: Model) -> int:
+        response = await self._client.get(
+            f"/models/{model.name}/iteration",
+        )
+        response.raise_for_status()
+        return response.json()["iteration"]
+
     async def _get_openai_client(
         self, model: Model, estimated_token_usage: int, verbosity: Verbosity
     ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
