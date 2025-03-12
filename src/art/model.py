@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from openai import AsyncOpenAI
 from typing import AsyncGenerator, TYPE_CHECKING
 
-# from .openai import AsyncOpenAI
+from .openai import patch_openai
 from .types import BaseModel, Trajectory, TuneConfig, Verbosity
 
 if TYPE_CHECKING:
@@ -22,7 +22,7 @@ class Model:
     ) -> AsyncGenerator[AsyncOpenAI, None]:
         client = await self.api._get_openai_client(self, verbosity)
         try:
-            yield client
+            yield patch_openai(client)
         finally:
             await self.api._close_openai_client(client)
 

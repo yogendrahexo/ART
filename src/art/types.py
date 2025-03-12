@@ -2,7 +2,7 @@ from openai.types.chat.chat_completion_message_param import ChatCompletionMessag
 from openai.types.chat.chat_completion import Choice
 import pydantic
 from pydantic import model_validator
-from typing import Any, Literal, Self
+from typing import Literal, Self
 
 from .gather_groups import get_groups_context
 

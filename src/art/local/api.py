@@ -85,6 +85,18 @@ class LocalAPI(API):
         elif config.verbosity > 0:
             print(f"Packed tensors with shape: {packed_tensors['tokens'].shape}")
         model_config = model_configs[model.base_model]()
+        optimizer = ComponentConfig(
+            (
+                "torch.optim.AdamW"
+                if torch.cuda.device_count() > 1
+                else "bitsandbytes.optim.PagedAdam8bit"
+            ),
+            lr=config.lr,
+            betas=config.betas,
+            weight_decay=config.weight_decay,
+        )
+        if torch.cuda.device_count() > 1:
+            optimizer.fused = True
         await tune(
             model.base_model,
             f"{self._path}/models/{model.name}",
@@ -92,13 +104,7 @@ class LocalAPI(API):
             model_config.tune_model,
             model_config.tune_model_type,
             config=TuneRecipeConfig(
-                optimizer=ComponentConfig(
-                    "torch.optim.AdamW",
-                    lr=config.lr,
-                    betas=config.betas,
-                    weight_decay=config.weight_decay,
-                    fused=True,
-                ),
+                optimizer=optimizer,
                 loss=ComponentConfig(
                     GRPO,
                     clip_epsilon=config.clip_epsilon,

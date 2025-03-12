@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from itertools import takewhile
 import math
+import random
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 from typing import cast, Generator
 
@@ -13,6 +15,7 @@ def tokenize_trajectory_groups(
     for group in trajectory_groups:
         if not group:
             continue
+        results: list[TokenizedResult] = []
         # Calculate GRPO group mean and standard deviation
         reward_mean = sum(trajectory.reward for trajectory in group) / len(group)
         reward_std = math.sqrt(
@@ -53,7 +56,7 @@ def tokenize_trajectory_groups(
             start = 0
             end = 0
 
-            def update_assistant_range():
+            def update_assistant_range() -> None:
                 nonlocal start, end
                 start = end + tokenized_result["assistant_masks"][end:].index(1)
                 try:
@@ -65,6 +68,9 @@ def tokenize_trajectory_groups(
                 if isinstance(message_or_choice, dict):
                     if message_or_choice["role"] == "assistant":
                         update_assistant_range()
+                        tokenized_result["asssistant_masks"][start:end] = [0] * (
+                            end - start
+                        )
                     continue
                 choice = message_or_choice
                 update_assistant_range()
@@ -81,21 +87,43 @@ def tokenize_trajectory_groups(
                 logprobs[start:end] = [
                     token_logprob.logprob for token_logprob in token_logprobs
                 ]
+                end = start + len(token_logprobs)
             tokens = [
                 tokenizer.decode(token_id) for token_id in tokenized_result["input_ids"]
             ]
-            yield TokenizedResult(
-                conversation=conversation,
-                reward=trajectory.reward,
-                advantage=advantage,
-                chat_template=chat_template,
-                chat=chat,
-                tokens=tokens,
-                token_ids=tokenized_result["input_ids"],
-                input_pos=list(range(len(tokens))),
-                assistant_mask=tokenized_result["assistant_masks"],
-                logprobs=logprobs,
+            results.append(
+                TokenizedResult(
+                    conversation=conversation,
+                    reward=trajectory.reward,
+                    advantage=advantage,
+                    chat_template=chat_template,
+                    chat=chat,
+                    tokens=tokens,
+                    token_ids=tokenized_result["input_ids"],
+                    input_pos=list(range(len(tokens))),
+                    assistant_mask=tokenized_result["assistant_masks"],
+                    logprobs=logprobs,
+                )
             )
+        # Choose a random prompt id
+        prompt_id = random.randint(-(2**63), 2**63 - 1)
+        # Find the longest shared prefix
+        prompt_length = len(
+            list(
+                takewhile(
+                    lambda x: len(set(x)) == 1,
+                    zip(*(r.token_ids for r in results)),
+                )
+            )
+        )
+        # Set the prompt id and length
+        for result in results:
+            result.prompt_id = prompt_id
+            result.prompt_length = prompt_length
+            # zero out assistant prompt tokens
+            result.assistant_mask[:prompt_length] = [0] * prompt_length
+        random.shuffle(results)
+        yield from results
 
 
 @dataclass

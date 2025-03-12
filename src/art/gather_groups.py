@@ -16,10 +16,12 @@ async def gather_groups(
     groups: Iterable[Iterable[Coroutine[Any, Any, T]]],
     *,
     pbar_desc: str | None = None,
+    pbar_total_completion_tokens: bool = True,
 ) -> list[list[T]]:
     groups = [list(g) for g in groups]
     context = GroupsContext(
-        pbar=tqdm.tqdm(desc=pbar_desc, total=sum(len(g) for g in groups))
+        pbar=tqdm.tqdm(desc=pbar_desc, total=sum(len(g) for g in groups)),
+        pbar_total_completion_tokens=pbar_total_completion_tokens,
     )
     with set_groups_context(context):
         result_groups = await asyncio.gather(
@@ -42,17 +44,20 @@ class GroupsContext:
     pbar: tqdm.tqdm | None = None
     metric_sums: Counter[str] = field(default_factory=Counter)
     metric_divisors: Counter[str] = field(default_factory=Counter)
+    pbar_total_completion_tokens: bool = False
 
     def update_pbar(self, n: int) -> None:
         if self.pbar is not None:
             self.pbar.update(n)
-            self.pbar.set_postfix(
-                {
-                    metric: self.metric_sums[metric]
-                    / max(1, self.metric_divisors[metric])
-                    for metric in self.metric_sums
-                }
-            )
+            postfix = {}
+            for metric in self.metric_sums:
+                sum = self.metric_sums[metric]
+                divisor = max(1, self.metric_divisors[metric])
+                if isinstance(sum, int):
+                    postfix[metric] = int(sum / divisor)
+                else:
+                    postfix[metric] = sum / divisor
+            self.pbar.set_postfix(postfix)
 
 
 groups_context_var = contextvars.ContextVar("groups_context", default=GroupsContext())
