@@ -17,7 +17,7 @@ Install the dependencies:
 uv sync
 ```
 
-Then you follow the SkyPilot or Local Training instructions below.
+Then follow the SkyPilot or Local Training instructions below.
 
 ### SkyPilot
 
