@@ -45,7 +45,7 @@ ssh art
 
 ### Local Training
 
-Make sure you are on a machine with at least 1xH100 or 1xA100-80GB GPU.
+Make sure you are on a machine with at least one H100 or A100-80GB GPU.
 
 Reinstall torchtune due to a CLI naming conflict:
 
