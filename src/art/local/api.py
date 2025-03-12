@@ -171,12 +171,19 @@ class LocalAPI(API):
         )
         self._log_wandb_data(
             model,
-            get_last_tune_metrics(self._get_output_dir(model.name)),
+            {
+                **get_last_tune_metrics(self._get_output_dir(model.name)),
+            },
             "train",
+            iteration_offset=-1,
         )
 
     def _log_wandb_data(
-        self, model: Model, data: dict[str, float], namespace: str
+        self,
+        model: Model,
+        data: dict[str, float],
+        namespace: str,
+        iteration_offset: int = 0,
     ) -> None:
         # Initialize wandb only if we don't have an active run for this model
         if model.name not in self._wandb_runs or not wandb.run:
@@ -198,6 +205,8 @@ class LocalAPI(API):
 
         # Log the data
         self._wandb_runs[model.name].log(
-            data,
-            step=self.__get_iteration(model),
+            {
+                "iteration": self.__get_iteration(model) + iteration_offset,
+                **data,
+            }
         )
