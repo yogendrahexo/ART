@@ -1,3 +1,4 @@
+import asyncio
 import httpx
 from openai import AsyncOpenAI
 import os
@@ -23,13 +24,16 @@ class API:
         return Model(api=self, name=name, base_model=base_model)
 
     async def _get_openai_client(
-        self, model: Model, verbosity: Verbosity
-    ) -> AsyncOpenAI:
+        self, model: Model, estimated_token_usage: int, verbosity: Verbosity
+    ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
         response = await self._client.post(
             f"/openai_clients", json={"model": model.name}
         )
         response.raise_for_status()
-        return AsyncOpenAI(**response.json())
+        data = response.json()
+        return AsyncOpenAI(**data["client_kwargs"]), asyncio.Semaphore(
+            data["max_concurrent_requests"]
+        )
 
     async def _close_openai_client(self, client: AsyncOpenAI) -> None:
         response = await self._client.post(
@@ -50,7 +54,6 @@ class API:
             "/evals",
             json={
                 "model": model.name,
-                "iteration": model.iteration,
                 "trajectory_groups": trajectory_groups,
             },
         )

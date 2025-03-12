@@ -1,3 +1,4 @@
+import asyncio
 from openai import AsyncOpenAI
 import os
 import torch
@@ -27,8 +28,8 @@ class LocalAPI(API):
         return Model(api=self, name=name, base_model=base_model)
 
     async def _get_openai_client(
-        self, model: Model, verbosity: Verbosity
-    ) -> AsyncOpenAI:
+        self, model: Model, estimated_token_usage: int, verbosity: Verbosity
+    ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
         self._vllm = await start_vllm(
             get_last_iteration_dir(f"{self._path}/models/{model.name}")
             or model.base_model,
@@ -53,7 +54,9 @@ class LocalAPI(API):
             timeout=360 + 15 * torch.cuda.device_count(),
             verbosity=verbosity,
         )
-        return self._vllm.client
+        return self._vllm.client, asyncio.Semaphore(
+            int(self._vllm.max_concurrent_tokens / estimated_token_usage)
+        )
 
     async def _close_openai_client(self, client: AsyncOpenAI) -> None:
         await client.close()

@@ -1,3 +1,4 @@
+import asyncio
 import httpx
 import openai
 from openai import AsyncStream
@@ -995,7 +996,9 @@ class AsyncCompletions(chat.AsyncCompletions):
         )
 
 
-def patch_openai(client: openai.AsyncOpenAI) -> openai.AsyncOpenAI:
+def patch_openai(
+    client: openai.AsyncOpenAI, semaphore: asyncio.Semaphore
+) -> openai.AsyncOpenAI:
     create = client.chat.completions.create
 
     def report_usage(chat_completion: ChatCompletion) -> None:
@@ -1015,7 +1018,8 @@ def patch_openai(client: openai.AsyncOpenAI) -> openai.AsyncOpenAI:
         if context.pbar_total_completion_tokens:
             kwargs["stream"] = True
             kwargs["stream_options"] = {"include_usage": True}
-        return_value = await create(*args, **kwargs)
+        async with semaphore:
+            return_value = await create(*args, **kwargs)
         if isinstance(return_value, ChatCompletion):
             report_usage(return_value)
             return return_value

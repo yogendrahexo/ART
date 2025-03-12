@@ -52,8 +52,8 @@ class TuneConfig(pydantic.BaseModel):
     sequence_length: int = 16_384
 
     # Logging params
-    plot_tensors: bool = False
-    verbosity: "Verbosity" = 1
+    plot_tensors: bool = True
+    verbosity: "Verbosity" = 2
 
 
 Verbosity = Literal[0, 1, 2]

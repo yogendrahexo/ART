@@ -10,11 +10,11 @@ import torch
 from torchtune.modules import TransformerDecoder
 from torchtune.training import cleanup_before_training, FullModelHFCheckpointer
 from torchtune.training.metric_logging import DiskLogger
-import tqdm
 from typing import Any, Callable, IO
 
 from .pack import PackedDataset, PackedTensors, packed_tensors_to_dir
 from .recipe import ComponentConfig, recipe_main, TuneRecipeConfig
+from ..tqdm import tqdm
 from ..types import Verbosity
 
 
@@ -137,7 +137,11 @@ async def tune(
             config_path=f"{output_dir}/config.yaml",
             total=disk_packed_tensors["num_sequences"],
             verbosity=verbosity,
-            torchrun_kwargs={"nproc_per_node": torch.cuda.device_count()},
+            torchrun_kwargs=(
+                {"nproc_per_node": torch.cuda.device_count()}
+                if torch.cuda.device_count() > 1
+                else {}
+            ),
             # tune_run_env={"CUDA_LAUNCH_BLOCKING": "1"},
         )
     epoch_dirs = lambda: glob.glob(f"{output_dir}/epoch_*")
@@ -192,7 +196,7 @@ async def _tune_run(
             f"--{key.replace('_', '-')}{f'={value}' if value is not True else ''}"
             for key, value in (torchrun_kwargs or {}).items()
         ],
-        "lib.recipe.TuneRecipe",
+        "art.local.recipe.TuneRecipe",
         "--config",
         config_path,
     ]

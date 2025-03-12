@@ -18,11 +18,13 @@ class Model:
 
     @asynccontextmanager
     async def openai_client(
-        self, verbosity: Verbosity = 2
+        self, estimated_token_usage: int = 1024, verbosity: Verbosity = 2
     ) -> AsyncGenerator[AsyncOpenAI, None]:
-        client = await self.api._get_openai_client(self, verbosity)
+        client, semaphore = await self.api._get_openai_client(
+            self, estimated_token_usage, verbosity
+        )
         try:
-            yield patch_openai(client)
+            yield patch_openai(client, semaphore)
         finally:
             await self.api._close_openai_client(client)
 
