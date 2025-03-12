@@ -7,7 +7,7 @@ An open-source reinforcement training library for LLMs and agentic workflows
 Clone the repository:
 
 ```bash
-git clone https://github.com/openpipe-ai/agent-reinforcement-training.git
+git clone https://github.com/OpenPipe/agent-reinforcement-training.git
 cd agent-reinforcement-training
 ```
 
@@ -45,6 +45,8 @@ ssh art
 
 ### Local Training
 
+Make sure you are on a machine with at least 1xH100 or 1xA100-80GB GPU.
+
 Reinstall torchtune due to a CLI naming conflict:
 
 ```bash
@@ -54,4 +56,6 @@ uv add torchtune
 
 ### "Temporal Clue" example
 
-Now you can run the "Temporal Clue" example in `/examples/temporal-clue.ipynb`. It has been tested with the Hermes 2 Theta Llama 3 8B model on a 1xH100 instance. You should see immediate improvement in the validation reward after one iteration.
+Now you can run the "Temporal Clue" example in `/examples/temporal-clue.ipynb`.
+
+It has been tested with the Hermes 2 Theta Llama 3 8B model on a 1xH100 instance. You should see immediate improvement in `val/reward` after one iteration.
