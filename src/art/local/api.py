@@ -98,7 +98,7 @@ class LocalAPI(API):
                 return_tokens_as_token_ids=True,
                 swap_space=80,
                 tensor_parallel_size=torch.cuda.device_count(),
-                enable_auto_tool_choice=tool_use,
+                enable_auto_tool_choice=tool_use or None,
                 tool_call_parser=model_config.vllm_tool_call_parser,
             ),
             timeout=360 + 15 * torch.cuda.device_count(),

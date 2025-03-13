@@ -25,13 +25,20 @@ def tokenize_trajectory_groups(
         for trajectory in group:
             # Calculate GRPO advantage for this trajectory
             advantage = (trajectory.reward - reward_mean) / (reward_std + 1e-6)
+            # Skip trajectories with no advantage
+            if advantage == 0:
+                continue
             conversation: list = [
                 (
                     message_or_choice
                     if isinstance(message_or_choice, dict)
                     else {
                         "role": "assistant",
-                        "content": message_or_choice.message.content,
+                        "content": message_or_choice.message.content or "",
+                        "tool_calls": [
+                            tool_call.model_dump()
+                            for tool_call in message_or_choice.message.tool_calls or []
+                        ],
                     }
                 )
                 for message_or_choice in trajectory.messages_and_choices
@@ -64,7 +71,10 @@ def tokenize_trajectory_groups(
 
             def update_assistant_range() -> None:
                 nonlocal start, end
-                start = end + tokenized_result["assistant_masks"][end:].index(1)
+                try:
+                    start = end + tokenized_result["assistant_masks"][end:].index(1)
+                except ValueError:
+                    start = len(tokenized_result["assistant_masks"])
                 try:
                     end = start + tokenized_result["assistant_masks"][start:].index(0)
                 except ValueError:
@@ -80,6 +90,12 @@ def tokenize_trajectory_groups(
                     continue
                 choice = message_or_choice
                 update_assistant_range()
+                if choice.message.content and not choice.logprobs:
+                    raise ValueError(
+                        "Chat completion choices with content must have corresponding token logprobs"
+                    )
+                elif not choice.message.content and not choice.logprobs:
+                    continue
                 assert choice.logprobs and (
                     token_logprobs := choice.logprobs.content or choice.logprobs.refusal
                 ), "Chat completion choices must have logprobs"
