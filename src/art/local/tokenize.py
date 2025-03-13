@@ -3,9 +3,46 @@ from itertools import takewhile
 import math
 import random
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
-from typing import cast, Generator
+from typing import cast, Generator, TypedDict
 
 from ..types import Trajectory
+
+
+@dataclass
+class TokenizedResult:
+    trajectory: Trajectory
+    advantage: float
+    conversation: list
+    chat_template: str
+    chat: str
+    tokens: list[str]
+    token_ids: list[int]
+    input_pos: list[int]
+    assistant_mask: list[int]
+    logprobs: list[float]
+    prompt_id: int = 0
+    prompt_length: int = 0
+
+    def without_prompt(self) -> "TokenizedResult":
+        return TokenizedResult(
+            trajectory=self.trajectory,
+            conversation=self.conversation,
+            advantage=self.advantage,
+            chat_template=self.chat_template,
+            chat=self.chat,
+            tokens=self.tokens[self.prompt_length :],
+            token_ids=self.token_ids[self.prompt_length :],
+            input_pos=self.input_pos[self.prompt_length :],
+            assistant_mask=self.assistant_mask[self.prompt_length :],
+            logprobs=self.logprobs[self.prompt_length :],
+            prompt_id=self.prompt_id,
+            prompt_length=0,
+        )
+
+
+class TokenizedResultDict(TypedDict):
+    input_ids: list[int]
+    assistant_masks: list[int]
 
 
 def tokenize_trajectory_groups(
@@ -28,103 +65,11 @@ def tokenize_trajectory_groups(
             # Skip trajectories with no advantage
             if advantage == 0:
                 continue
-            conversation: list = [
-                (
-                    message_or_choice
-                    if isinstance(message_or_choice, dict)
-                    else {
-                        "role": "assistant",
-                        "content": message_or_choice.message.content or "",
-                        "tool_calls": [
-                            tool_call.model_dump()
-                            for tool_call in message_or_choice.message.tool_calls or []
-                        ],
-                    }
-                )
-                for message_or_choice in trajectory.messages_and_choices
-            ]
-            chat_template = update_chat_template(
-                tokenizer.get_chat_template("tool_use" if trajectory.tools else None)
-            )
-            chat = cast(
-                str,
-                tokenizer.apply_chat_template(
-                    conversation,
-                    tools=list(trajectory.tools) if trajectory.tools else None,  # type: ignore
-                    chat_template=chat_template,
-                    tokenize=False,
-                ),
-            )
-            tokenized_result = cast(
-                dict[str, list[int]],
-                tokenizer.apply_chat_template(
-                    conversation,
-                    tools=list(trajectory.tools) if trajectory.tools else None,  # type: ignore
-                    chat_template=chat_template,
-                    return_dict=True,
-                    return_assistant_tokens_mask=True,
-                ),
-            )
-            logprobs = [float("nan")] * len(tokenized_result["input_ids"])
-            start = 0
-            end = 0
-
-            def update_assistant_range() -> None:
-                nonlocal start, end
-                try:
-                    start = end + tokenized_result["assistant_masks"][end:].index(1)
-                except ValueError:
-                    start = len(tokenized_result["assistant_masks"])
-                try:
-                    end = start + tokenized_result["assistant_masks"][start:].index(0)
-                except ValueError:
-                    end = len(tokenized_result["assistant_masks"])
-
-            for message_or_choice in trajectory.messages_and_choices:
-                if isinstance(message_or_choice, dict):
-                    if message_or_choice["role"] == "assistant":
-                        update_assistant_range()
-                        tokenized_result["asssistant_masks"][start:end] = [0] * (
-                            end - start
-                        )
-                    continue
-                choice = message_or_choice
-                update_assistant_range()
-                if choice.message.content and not choice.logprobs:
-                    raise ValueError(
-                        "Chat completion choices with content must have corresponding token logprobs"
-                    )
-                elif not choice.message.content and not choice.logprobs:
-                    continue
-                assert choice.logprobs and (
-                    token_logprobs := choice.logprobs.content or choice.logprobs.refusal
-                ), "Chat completion choices must have logprobs"
-                tokenized_result["input_ids"][start:end] = [
-                    int(token_logprob.token.split(":")[1])
-                    for token_logprob in token_logprobs
-                ]
-                tokenized_result["assistant_masks"][start:end] = [
-                    1 for _ in token_logprobs
-                ]
-                logprobs[start:end] = [
-                    token_logprob.logprob for token_logprob in token_logprobs
-                ]
-                end = start + len(token_logprobs)
-            tokens = [
-                tokenizer.decode(token_id) for token_id in tokenized_result["input_ids"]
-            ]
             results.append(
-                TokenizedResult(
-                    conversation=conversation,
-                    reward=trajectory.reward,
-                    advantage=advantage,
-                    chat_template=chat_template,
-                    chat=chat,
-                    tokens=tokens,
-                    token_ids=tokenized_result["input_ids"],
-                    input_pos=list(range(len(tokens))),
-                    assistant_mask=tokenized_result["assistant_masks"],
-                    logprobs=logprobs,
+                _tokenize_trajectory(
+                    tokenizer,
+                    trajectory,
+                    advantage,
                 )
             )
         # Choose a random prompt id
@@ -148,39 +93,146 @@ def tokenize_trajectory_groups(
         yield from results
 
 
-@dataclass
-class TokenizedResult:
-    conversation: list
-    reward: float
-    advantage: float
-    chat_template: str
-    chat: str
-    tokens: list[str]
-    token_ids: list[int]
-    input_pos: list[int]
-    assistant_mask: list[int]
-    logprobs: list[float]
-    prompt_id: int = 0
-    prompt_length: int = 0
-
-    def without_prompt(self) -> "TokenizedResult":
-        return TokenizedResult(
-            conversation=self.conversation,
-            advantage=self.advantage,
-            reward=self.reward,
-            chat_template=self.chat_template,
-            chat=self.chat,
-            tokens=self.tokens[self.prompt_length :],
-            token_ids=self.token_ids[self.prompt_length :],
-            input_pos=self.input_pos[self.prompt_length :],
-            assistant_mask=self.assistant_mask[self.prompt_length :],
-            logprobs=self.logprobs[self.prompt_length :],
-            prompt_id=self.prompt_id,
-            prompt_length=0,
+def _tokenize_trajectory(
+    tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+    trajectory: Trajectory,
+    advantage: float,
+) -> TokenizedResult:
+    """
+    Tokenizes a trajectory and returns a TokenizedResult.
+    """
+    # Convert Choice objects to dicts for compatibility with the tokenizer.
+    conversation: list = [
+        (
+            message_or_choice
+            if isinstance(message_or_choice, dict)
+            else {
+                "role": "assistant",
+                "content": message_or_choice.message.content or "",
+                "tool_calls": [
+                    tool_call.model_dump()
+                    for tool_call in message_or_choice.message.tool_calls or []
+                ],
+            }
         )
+        for message_or_choice in trajectory.messages_and_choices
+    ]
+    # Update the chat template to add generation tags for assistant token masking.
+    chat_template = _updated_chat_template(
+        tokenizer.get_chat_template("tool_use" if trajectory.tools else None)
+    )
+    # Apply the chat template to the conversation to get a string representation.
+    chat = cast(
+        str,
+        tokenizer.apply_chat_template(
+            conversation,
+            tools=list(trajectory.tools) if trajectory.tools else None,  # type: ignore
+            chat_template=chat_template,
+            tokenize=False,
+        ),
+    )
+    # Tokenize the conversation and get the tokenized result and assistant mask.
+    tokenized_result = cast(
+        TokenizedResultDict,
+        tokenizer.apply_chat_template(
+            conversation,
+            tools=list(trajectory.tools) if trajectory.tools else None,  # type: ignore
+            chat_template=chat_template,
+            return_dict=True,
+            return_assistant_tokens_mask=True,
+        ),
+    )
+    # Initialize logprobs with NaNs.
+    logprobs = [float("nan")] * len(tokenized_result["input_ids"])
+    # Update the tokenized result and logprobs with the logprobs from the chat completion choices.
+    _update_tokenized_result_and_logprobs(
+        trajectory,
+        tokenized_result,
+        logprobs,
+    )
+    # Decode the tokenized result to get the string tokens.
+    tokens = [tokenizer.decode(token_id) for token_id in tokenized_result["input_ids"]]
+    # Return the TokenizedResult.
+    return TokenizedResult(
+        trajectory=trajectory,
+        conversation=conversation,
+        advantage=advantage,
+        chat_template=chat_template,
+        chat=chat,
+        tokens=tokens,
+        token_ids=tokenized_result["input_ids"],
+        input_pos=list(range(len(tokens))),
+        assistant_mask=tokenized_result["assistant_masks"],
+        logprobs=logprobs,
+    )
 
 
-def update_chat_template(chat_template: str) -> str:
+def _update_tokenized_result_and_logprobs(
+    trajectory: Trajectory,
+    tokenized_result: TokenizedResultDict,
+    logprobs: list[float],
+) -> None:
+    """
+    Updates the tokenized result and logprobs for a trajectory using the token logprobs
+    from the chat completion choices.
+    """
+    start = 0
+    end = 0
+
+    def update_assistant_range() -> None:
+        """
+        Updates the start and end indices to the next range of generated tokens
+        """
+        nonlocal start, end
+        try:
+            start = end + tokenized_result["assistant_masks"][end:].index(1)
+        except ValueError:
+            start = len(tokenized_result["assistant_masks"])
+        try:
+            end = start + tokenized_result["assistant_masks"][start:].index(0)
+        except ValueError:
+            end = len(tokenized_result["assistant_masks"])
+
+    for message_or_choice in trajectory.messages_and_choices:
+        if isinstance(message_or_choice, dict):
+            if message_or_choice["role"] == "assistant":
+                update_assistant_range()
+                # If it's an assistant message, but not a Choice object,
+                # then we assume it's part of the prompt and not generated.
+                tokenized_result["assistant_masks"][start:end] = [0] * (end - start)
+            continue
+        choice = message_or_choice
+        update_assistant_range()
+        if choice.message.content and not choice.logprobs:
+            raise ValueError(
+                "Chat completion choices with content must have corresponding token logprobs"
+            )
+        elif not choice.message.content and not choice.logprobs:
+            # This is a strange case that I encountered, but it may not be necessary
+            # anymore or perhaps we should do something different here.
+            continue
+        assert choice.logprobs and (
+            token_logprobs := choice.logprobs.content or choice.logprobs.refusal
+        ), "Chat completion choices must have logprobs"
+        # We update the token ids, assistant mask, and logprobs with the logprobs from the chat
+        # completion choice. We do this because the tokenization is not always the same, probably
+        # due to multi-token unicode characters.
+        tokenized_result["input_ids"][start:end] = [
+            int(token_logprob.token.split(":")[1]) for token_logprob in token_logprobs
+        ]
+        tokenized_result["assistant_masks"][start:end] = [1 for _ in token_logprobs]
+        logprobs[start:end] = [
+            token_logprob.logprob for token_logprob in token_logprobs
+        ]
+        # We update the end index because the number of token logprobs may be different
+        # from the original number of tokens in the tokenized result.
+        end = start + len(token_logprobs)
+
+
+def _updated_chat_template(chat_template: str) -> str:
+    """
+    Returns an updated chat template that adds generation tags for assistant token masking.
+    """
     return (
         chat_template
         # Remove template logic that strips reasoning content from the chat messages
