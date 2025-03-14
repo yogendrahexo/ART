@@ -14,7 +14,13 @@ from .pack import packed_tensors_from_tokenized_results, plot_packed_tensors
 from .model_configs import model_configs
 from .recipe import ComponentConfig, TuneRecipeConfig
 from .tokenize import tokenize_trajectory_groups
-from .tune import get_iteration, get_last_iteration_dir, get_last_tune_metrics, tune
+from .tune import (
+    clear_iteration_dirs,
+    get_iteration,
+    get_last_iteration_dir,
+    get_last_tune_metrics,
+    tune,
+)
 from .vllm import kill_vllm_workers, start_vllm, vLLM
 
 
@@ -69,6 +75,31 @@ class LocalAPI(API):
 
     def __get_iteration(self, model: Model) -> int:
         return get_iteration(self._get_output_dir(model.name))
+
+    async def _clear_iterations(
+        self, model: Model, benchmark: str, benchmark_smoothing: float = 1.0
+    ) -> None:
+        run = self._get_wandb_run(model)
+        output_dir = self._get_output_dir(model.name)
+        # Keep the latest iteration
+        iterations_to_keep = [get_iteration(output_dir)]
+        try:
+            history_df = (
+                wandb.Api()
+                .run(f"{run.entity}/{run.project}/{run.id}")
+                .history()
+                .groupby("iteration")
+                .mean()
+                .sort_index()
+            )
+            # Keep the best iteration so far, potentially smoothing to account for variance
+            best_iteration = (
+                history_df[benchmark].ewm(alpha=benchmark_smoothing).mean().idxmax()
+            )
+            iterations_to_keep.append(best_iteration)
+        except Exception as e:
+            print(f"Error getting best iteration: {e}")
+        clear_iteration_dirs(output_dir, iterations_to_keep)
 
     async def _get_openai_client(
         self,
@@ -215,17 +246,6 @@ class LocalAPI(API):
         namespace: str,
         iteration_offset: int = 0,
     ) -> None:
-        # Initialize wandb only if we don't have an active run for this model
-        if model.name not in self._wandb_runs or not wandb.run:
-            run = wandb.init(
-                entity=self._wandb_entity,
-                project=self._wandb_project,
-                id=model.name,
-                name=model.name,
-                resume="allow",
-            )
-            self._wandb_runs[model.name] = run
-
         # Add namespacing if needed
         data = (
             {f"{namespace}/{metric}": value for metric, value in data.items()}
@@ -234,9 +254,18 @@ class LocalAPI(API):
         )
 
         # Log the data
-        self._wandb_runs[model.name].log(
+        self._get_wandb_run(model).log(
             {
                 "iteration": self.__get_iteration(model) + iteration_offset,
                 **data,
             }
         )
+
+    def _get_wandb_run(self, model: Model) -> Run:
+        if model.name not in self._wandb_runs:
+            run = wandb.init(
+                entity=self._wandb_entity,
+                project=self._wandb_project,
+            )
+            self._wandb_runs[model.name] = run
+        return self._wandb_runs[model.name]

@@ -72,6 +72,15 @@ class API:
         response.raise_for_status()
         return response.json()["iteration"]
 
+    async def _clear_iterations(
+        self, model: Model, benchmark: str, benchmark_smoothing: float = 1.0
+    ) -> None:
+        response = await self._client.post(
+            f"/models/{model.name}/clear_iterations",
+            json={"benchmark": benchmark, "benchmark_smoothing": benchmark_smoothing},
+        )
+        response.raise_for_status()
+
     async def _get_openai_client(
         self,
         model: Model,
