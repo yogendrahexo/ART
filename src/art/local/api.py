@@ -267,6 +267,9 @@ class LocalAPI(API):
             run = wandb.init(
                 entity=self._wandb_entity,
                 project=self._wandb_project,
+                name=model.name,
+                id=model.name,
+                resume="allow",
             )
             self._wandb_runs[model.name] = run
         return self._wandb_runs[model.name]
