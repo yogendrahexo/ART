@@ -88,6 +88,7 @@ class LocalAPI(API):
                 wandb.Api()
                 .run(f"{run.entity}/{run.project}/{run.id}")
                 .history()
+                .dropna(subset=[benchmark])
                 .groupby("iteration")
                 .mean()
                 .sort_index()
@@ -97,8 +98,8 @@ class LocalAPI(API):
                 history_df[benchmark].ewm(alpha=benchmark_smoothing).mean().idxmax()
             )
             iterations_to_keep.append(best_iteration)
-        except Exception as e:
-            print(f"Error getting best iteration: {e}")
+        except KeyError:
+            print(f'No "{benchmark}" metric found in history')
         clear_iteration_dirs(output_dir, iterations_to_keep)
 
     async def _get_openai_client(
