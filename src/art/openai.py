@@ -1020,27 +1020,29 @@ def patch_openai(
             kwargs["stream_options"] = {"include_usage": True}
         async with semaphore:
             return_value = await create(*args, **kwargs)
-        if isinstance(return_value, ChatCompletion):
-            report_usage(return_value)
-            return return_value
-        assert isinstance(return_value, AsyncStream)
-        if return_stream:
-            return return_value
+            if isinstance(return_value, ChatCompletion):
+                report_usage(return_value)
+                return return_value
+            assert isinstance(return_value, AsyncStream)
+            if return_stream:
+                return return_value
 
-        def on_chunk(chunk: ChatCompletionChunk, _: ChatCompletion) -> None:
-            context = get_groups_context()
-            if context.pbar_total_completion_tokens:
-                context.metric_sums["total_completion_tokens"] += sum(
-                    len(choice.logprobs.content or choice.logprobs.refusal or [])
-                    for choice in chunk.choices
-                    if choice.logprobs
-                    and (choice.logprobs.content or choice.logprobs.refusal)
-                )
-                context.update_pbar(n=0)
+            def on_chunk(chunk: ChatCompletionChunk, _: ChatCompletion) -> None:
+                context = get_groups_context()
+                if context.pbar_total_completion_tokens:
+                    context.metric_sums["total_completion_tokens"] += sum(
+                        len(choice.logprobs.content or choice.logprobs.refusal or [])
+                        for choice in chunk.choices
+                        if choice.logprobs
+                        and (choice.logprobs.content or choice.logprobs.refusal)
+                    )
+                    context.update_pbar(n=0)
 
-        chat_completion = await consume_chat_completion_stream(return_value, on_chunk)
-        report_usage(chat_completion)
-        return chat_completion
+            chat_completion = await consume_chat_completion_stream(
+                return_value, on_chunk
+            )
+            report_usage(chat_completion)
+            return chat_completion
 
     client.chat.completions.create = create_patched  # type: ignore
     return client

@@ -83,7 +83,6 @@ class LocalAPI(API):
             or model.base_model,
             model.name,
             max_concurrent_requests=4096,
-            env={"CUDA_LAUNCH_BLOCKING": "1"},
             named_arguments=dict(
                 block_size=32,
                 disable_log_requests=True,
