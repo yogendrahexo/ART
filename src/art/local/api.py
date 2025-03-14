@@ -82,7 +82,7 @@ class LocalAPI(API):
             get_last_iteration_dir(self._get_output_dir(model.name))
             or model.base_model,
             model.name,
-            max_concurrent_requests=4096,
+            max_concurrent_requests=2048,
             named_arguments=dict(
                 block_size=32,
                 disable_log_requests=True,
@@ -90,7 +90,7 @@ class LocalAPI(API):
                 enable_prefix_caching=True,
                 enforce_eager=True,
                 gpu_memory_utilization=0.95,
-                max_num_seqs=4096,
+                max_num_seqs=2048,
                 max_num_batched_tokens=16384,
                 num_scheduler_steps=16,
                 preemption_mode="swap",
