@@ -1,3 +1,4 @@
+# Interface as of 2025-03-14 @ 10:40am Mountain Time
 from contextlib import asynccontextmanager
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
