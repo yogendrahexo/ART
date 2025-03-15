@@ -220,7 +220,7 @@ class LocalAPI(API):
                 message = message_or_choice
             else:
                 message = cast(Message, message_or_choice.message.model_dump())
-            formatted_messages.append(format_message(message) + "\n")
+            formatted_messages.append(format_message(message))
         return header + "\n".join(formatted_messages)
 
     async def _tune_model(
