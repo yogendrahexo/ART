@@ -57,6 +57,13 @@ class GroupsContext:
                     postfix[metric] = int(sum / divisor)
                 else:
                     postfix[metric] = sum / divisor
+            for key in (
+                "prompt_tokens",
+                "completion_tokens",
+                "total_completion_tokens",
+            ):
+                if key in postfix:
+                    postfix[key] = postfix.pop(key)
             self.pbar.set_postfix(postfix)
 
 

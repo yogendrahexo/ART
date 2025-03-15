@@ -84,12 +84,17 @@ class API:
     async def _get_openai_client(
         self,
         model: Model,
-        estimated_token_usage: int,
+        estimated_completion_tokens: int,
         tool_use: bool,
         verbosity: Verbosity,
     ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
         response = await self._client.post(
-            f"/openai_clients", json={"model": model.name}
+            f"/openai_clients",
+            json={
+                "model": model.name,
+                "estimated_completion_tokens": estimated_completion_tokens,
+                "tool_use": tool_use,
+            },
         )
         response.raise_for_status()
         data = response.json()

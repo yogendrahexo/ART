@@ -105,7 +105,7 @@ class LocalAPI(API):
     async def _get_openai_client(
         self,
         model: Model,
-        estimated_token_usage: int,
+        estimated_completion_tokens: int,
         tool_use: bool,
         verbosity: Verbosity,
     ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
@@ -124,7 +124,7 @@ class LocalAPI(API):
                 gpu_memory_utilization=0.95,
                 max_num_seqs=2048,
                 max_num_batched_tokens=16384,
-                num_scheduler_steps=16,
+                num_scheduler_steps=8,
                 preemption_mode="swap",
                 return_tokens_as_token_ids=True,
                 swap_space=80,
@@ -135,8 +135,25 @@ class LocalAPI(API):
             timeout=360 + 15 * torch.cuda.device_count(),
             verbosity=verbosity,
         )
+        try:
+            run = self._get_wandb_run(model)
+            history_df = (
+                wandb.Api()
+                .run(f"{run.entity}/{run.project}/{run.id}")
+                .history()
+                .dropna(subset=["train/completion_tokens"])
+                .sort_values("iteration")
+            )
+            estimated_completion_tokens = history_df["train/completion_tokens"].iloc[-1]
+            if verbosity > 1:
+                print(
+                    f"Using previous iteration {estimated_completion_tokens} completion tokens per request as estimate"
+                )
+        except KeyError:
+            if verbosity > 1:
+                print(f'"train/completion_tokens" not found in run history')
         return self._vllm.client, asyncio.Semaphore(
-            int(self._vllm.max_concurrent_tokens / estimated_token_usage)
+            int(self._vllm.max_concurrent_tokens / estimated_completion_tokens)
         )
 
     async def _close_openai_client(self, client: AsyncOpenAI) -> None:

@@ -1004,11 +1004,7 @@ def patch_openai(
     def report_usage(chat_completion: ChatCompletion) -> None:
         context = get_groups_context()
         if chat_completion.usage is not None:
-            context.metric_sums[
-                "completion_tokens2"
-            ] += chat_completion.usage.completion_tokens
             context.metric_sums["prompt_tokens"] += chat_completion.usage.prompt_tokens
-            context.metric_divisors["completion_tokens2"] += 1
             context.metric_divisors["prompt_tokens"] += 1
 
     async def create_patched(*args: Any, **kwargs: Any) -> ChatCompletion | AsyncStream:
