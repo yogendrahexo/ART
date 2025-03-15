@@ -115,7 +115,10 @@ class API:
         response.raise_for_status()
 
     async def _save(
-        self, model: Model, trajectory_groups: list[list[Trajectory]], name: str
+        self,
+        model: Model,
+        trajectory_groups: list[list[Trajectory | BaseException]],
+        name: str,
     ) -> None:
         response = await self._client.post(
             "/evals",
@@ -130,7 +133,7 @@ class API:
     async def _tune_model(
         self,
         model: Model,
-        trajectory_groups: list[list[Trajectory]],
+        trajectory_groups: list[list[Trajectory | BaseException]],
         config: TuneConfig,
     ) -> None:
         response = await self._client.post(

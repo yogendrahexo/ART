@@ -165,14 +165,19 @@ class LocalAPI(API):
     async def _save(
         self,
         model: Model,
-        trajectory_groups: list[list[Trajectory]],
+        trajectory_groups: list[list[Trajectory | BaseException]],
         name: str = "val",
     ) -> None:
         # Collect all metrics (including reward) across all trajectories
-        all_metrics: dict[str, list[float]] = {"reward": []}
+        all_metrics: dict[str, list[float]] = {"reward": [], "exception_rate": []}
 
         for group in trajectory_groups:
             for trajectory in group:
+                if isinstance(trajectory, BaseException):
+                    all_metrics["exception_rate"].append(1)
+                    continue
+                else:
+                    all_metrics["exception_rate"].append(0)
                 # Add reward metric
                 all_metrics["reward"].append(trajectory.reward)
 
@@ -193,13 +198,19 @@ class LocalAPI(API):
     async def _tune_model(
         self,
         model: Model,
-        trajectory_groups: list[list[Trajectory]],
+        trajectory_groups: list[list[Trajectory | BaseException]],
         config: TuneConfig,
     ) -> None:
         await self._save(model, trajectory_groups, "train")
         tokenizer = AutoTokenizer.from_pretrained(model.base_model)
         tokenized_results = list(
-            tokenize_trajectory_groups(tokenizer, trajectory_groups)
+            tokenize_trajectory_groups(
+                tokenizer,
+                [
+                    [t for t in g if isinstance(t, Trajectory)]
+                    for g in trajectory_groups
+                ],
+            )
         )
         packed_tensors = packed_tensors_from_tokenized_results(
             tokenized_results,

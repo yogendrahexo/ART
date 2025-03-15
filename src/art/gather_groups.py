@@ -3,7 +3,7 @@ from collections import Counter
 import contextvars
 import contextlib
 from dataclasses import dataclass, field
-from typing import Any, Coroutine, Iterable, Iterator, TypeVar
+from typing import Any, Coroutine, Iterable, Iterator, Literal, overload, TypeVar
 
 
 from .tqdm import tqdm
@@ -12,12 +12,33 @@ from .tqdm import tqdm
 T = TypeVar("T")
 
 
+@overload
 async def gather_groups(
     groups: Iterable[Iterable[Coroutine[Any, Any, T]]],
     *,
     pbar_desc: str | None = None,
     pbar_total_completion_tokens: bool = True,
-) -> list[list[T]]:
+    return_exceptions: Literal[True] = True,
+) -> list[list[T | BaseException]]: ...
+
+
+@overload
+async def gather_groups(
+    groups: Iterable[Iterable[Coroutine[Any, Any, T]]],
+    *,
+    pbar_desc: str | None = None,
+    pbar_total_completion_tokens: bool = True,
+    return_exceptions: Literal[False],
+) -> list[list[T]]: ...
+
+
+async def gather_groups(
+    groups: Iterable[Iterable[Coroutine[Any, Any, T]]],
+    *,
+    pbar_desc: str | None = None,
+    pbar_total_completion_tokens: bool = True,
+    return_exceptions: bool = True,
+) -> list[list[T | BaseException]] | list[list[T]]:
     groups = [list(g) for g in groups]
     context = GroupsContext(
         pbar=tqdm.tqdm(desc=pbar_desc, total=sum(len(g) for g in groups)),
@@ -25,7 +46,12 @@ async def gather_groups(
     )
     with set_groups_context(context):
         result_groups = await asyncio.gather(
-            *[asyncio.gather(*[wrap_coroutine(c) for c in g]) for g in groups]
+            *[
+                asyncio.gather(
+                    *[wrap_coroutine(c) for c in g], return_exceptions=return_exceptions
+                )
+                for g in groups
+            ]
         )
     if context.pbar is not None:
         context.pbar.close()
@@ -33,10 +59,16 @@ async def gather_groups(
 
 
 async def wrap_coroutine(coro: Coroutine[Any, Any, T]) -> T:
-    result = await coro
     context = get_groups_context()
-    context.update_pbar(n=1)
-    return result
+    try:
+        result = await coro
+    except BaseException as e:
+        context.metric_sums["exceptions"] += 1
+        context.update_pbar(n=0)
+        raise e
+    else:
+        context.update_pbar(n=1)
+        return result
 
 
 @dataclass

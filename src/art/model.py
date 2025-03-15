@@ -69,7 +69,9 @@ class Model:
         await self.api._clear_iterations(self, benchmark, benchmark_smoothing)
 
     async def save(
-        self, trajectory_groups: list[list[Trajectory]], name: str = "val"
+        self,
+        trajectory_groups: list[list[Trajectory | BaseException]],
+        name: str = "val",
     ) -> None:
         """
         Save the model's performance on an evaluation batch of trajectory groups.
@@ -82,7 +84,7 @@ class Model:
 
     async def tune(
         self,
-        trajectory_groups: list[list[Trajectory]],
+        trajectory_groups: list[list[Trajectory | BaseException]],
         config: TuneConfig = TuneConfig(),
     ) -> None:
         """
