@@ -1043,6 +1043,7 @@ def patch_openai(
                         )
                         + "\nAssistant:\n"
                     )
+                    log_file.flush()
 
                 def on_chunk(chunk: ChatCompletionChunk, _: ChatCompletion) -> None:
                     context = get_groups_context()
@@ -1056,8 +1057,9 @@ def patch_openai(
                             and (choice.logprobs.content or choice.logprobs.refusal)
                         )
                         context.update_pbar(n=0)
-                    if log_file:
+                    if log_file and chunk.choices:
                         log_file.write(chunk.choices[0].delta.content or "")
+                        log_file.flush()
 
                 chat_completion = await consume_chat_completion_stream(
                     return_value, on_chunk

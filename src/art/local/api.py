@@ -175,7 +175,7 @@ class LocalAPI(API):
             for j, trajectory in enumerate(group):
                 if isinstance(trajectory, BaseException):
                     continue
-                directory = f"{self._get_output_dir(model.name)}/trajectories/{name}/{self._get_iteration(model)}"
+                directory = f"{self._get_output_dir(model.name)}/trajectories/{name}/{self.__get_iteration(model):04d}"
                 os.makedirs(directory, exist_ok=True)
                 i_digits = len(str(len(trajectory_groups) - 1))
                 j_digits = len(str(len(group) - 1))
@@ -213,7 +213,7 @@ class LocalAPI(API):
 
     def _trajectory_log(self, trajectory: Trajectory) -> str:
         """Format a trajectory into a readable log string."""
-        header = f"reward: {trajectory.reward:.4f} {' '.join(f'{k}: {v:.4f}' for k, v in trajectory.metrics.items())}\n\n"
+        header = f"reward: {trajectory.reward} {' '.join(f'{k}: {v}' for k, v in trajectory.metrics.items())}\n\n"
         formatted_messages = []
         for message_or_choice in trajectory.messages_and_choices:
             if isinstance(message_or_choice, dict):

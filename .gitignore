@@ -3,4 +3,5 @@ __pycache__/
 .env
 .venv/
 logs/
+streaming-chat-completions/
 wandb/
