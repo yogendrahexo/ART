@@ -1,8 +1,12 @@
 import asyncio
-from collections import Counter
 import contextvars
 import contextlib
+from collections import Counter
 from dataclasses import dataclass, field
+from itertools import cycle
+import os
+import random
+import shutil
 from typing import Any, Coroutine, Iterable, Iterator, Literal, overload, TypeVar
 
 
@@ -19,6 +23,9 @@ async def gather_groups(
     pbar_desc: str | None = None,
     pbar_total_completion_tokens: bool = True,
     return_exceptions: Literal[True] = True,
+    stream_chat_completions: bool | int | float = False,
+    streaming_chat_completions_dir: str = "./streaming-chat-completions",
+    clear_streaming_chat_completions_dir: bool = True,
 ) -> list[list[T | BaseException]]: ...
 
 
@@ -29,6 +36,9 @@ async def gather_groups(
     pbar_desc: str | None = None,
     pbar_total_completion_tokens: bool = True,
     return_exceptions: Literal[False],
+    stream_chat_completions: bool | int | float = False,
+    streaming_chat_completions_dir: str = "./streaming-chat-completions",
+    clear_streaming_chat_completions_dir: bool = True,
 ) -> list[list[T]]: ...
 
 
@@ -38,11 +48,31 @@ async def gather_groups(
     pbar_desc: str | None = None,
     pbar_total_completion_tokens: bool = True,
     return_exceptions: bool = True,
+    stream_chat_completions: bool | int | float = False,
+    streaming_chat_completions_dir: str = "./streaming-chat-completions",
+    clear_streaming_chat_completions_dir: bool = True,
 ) -> list[list[T | BaseException]] | list[list[T]]:
     groups = [list(g) for g in groups]
+    total = sum(len(g) for g in groups)
+    if stream_chat_completions:
+        if clear_streaming_chat_completions_dir:
+            shutil.rmtree(streaming_chat_completions_dir, ignore_errors=True)
+        os.makedirs(streaming_chat_completions_dir, exist_ok=True)
+        if isinstance(stream_chat_completions, bool):
+            true_count = total
+        elif isinstance(stream_chat_completions, int):
+            true_count = min(stream_chat_completions, total)
+        elif isinstance(stream_chat_completions, float):
+            true_count = min(int(round(total * stream_chat_completions)), total)
+        should_stream = [True] * true_count + [False] * (total - true_count)
+        random.shuffle(should_stream)
+    else:
+        should_stream = [False]
     context = GroupsContext(
-        pbar=tqdm.tqdm(desc=pbar_desc, total=sum(len(g) for g in groups)),
+        pbar=tqdm.tqdm(desc=pbar_desc, total=total),
         pbar_total_completion_tokens=pbar_total_completion_tokens,
+        should_stream=iter(cycle(should_stream)),
+        streaming_chat_completions_dir=streaming_chat_completions_dir,
     )
     with set_groups_context(context):
         result_groups = await asyncio.gather(
@@ -77,6 +107,8 @@ class GroupsContext:
     metric_sums: Counter[str] = field(default_factory=Counter)
     metric_divisors: Counter[str] = field(default_factory=Counter)
     pbar_total_completion_tokens: bool = False
+    should_stream: Iterator[bool] = field(default_factory=lambda: iter(cycle([False])))
+    streaming_chat_completions_dir: str = "./streaming-chat-completions"
 
     def update_pbar(self, n: int) -> None:
         if self.pbar is not None:

@@ -3,12 +3,14 @@ from openai import AsyncOpenAI
 import os
 import torch
 from transformers import AutoTokenizer
+from typing import cast
 import wandb
 from wandb.sdk.wandb_run import Run
 
 from ..api import API
 from ..model import Model
-from ..types import BaseModel, Trajectory, TuneConfig, Verbosity
+from ..types import BaseModel, Message, Trajectory, TuneConfig, Verbosity
+from ..utils import format_message
 from .grpo import GRPO
 from .pack import packed_tensors_from_tokenized_results, plot_packed_tensors
 from .model_configs import model_configs
@@ -168,6 +170,20 @@ class LocalAPI(API):
         trajectory_groups: list[list[Trajectory | BaseException]],
         name: str = "val",
     ) -> None:
+        # Save logs for each trajectory
+        for i, group in enumerate(trajectory_groups):
+            for j, trajectory in enumerate(group):
+                if isinstance(trajectory, BaseException):
+                    continue
+                directory = f"{self._get_output_dir(model.name)}/trajectories/{name}/{self._get_iteration(model)}"
+                os.makedirs(directory, exist_ok=True)
+                i_digits = len(str(len(trajectory_groups) - 1))
+                j_digits = len(str(len(group) - 1))
+                with open(
+                    f"{directory}/{i:0{i_digits}d}-{j:0{j_digits}d}.log", "w"
+                ) as f:
+                    f.write(self._trajectory_log(trajectory))
+
         # Collect all metrics (including reward) across all trajectories
         all_metrics: dict[str, list[float]] = {"reward": [], "exception_rate": []}
 
@@ -194,6 +210,18 @@ class LocalAPI(API):
                 averages[metric] = sum(values) / len(values)
 
         self._log_wandb_data(model, averages, name)
+
+    def _trajectory_log(self, trajectory: Trajectory) -> str:
+        """Format a trajectory into a readable log string."""
+        header = f"reward: {trajectory.reward:.4f} {' '.join(f'{k}: {v:.4f}' for k, v in trajectory.metrics.items())}\n\n"
+        formatted_messages = []
+        for message_or_choice in trajectory.messages_and_choices:
+            if isinstance(message_or_choice, dict):
+                message = message_or_choice
+            else:
+                message = cast(Message, message_or_choice.message.model_dump())
+            formatted_messages.append(format_message(message) + "\n")
+        return header + "\n".join(formatted_messages)
 
     async def _tune_model(
         self,
