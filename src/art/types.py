@@ -21,7 +21,7 @@ BaseModel = Literal[
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B" "unsloth/Llama-3.3-70B-Instruct",
 ]
 
-Message = ChatCompletionMessageParam  # | Choice
+Message = ChatCompletionMessageParam
 MessageOrChoice = Message | Choice
 Messages = list[Message]
 MessagesAndChoices = list[MessageOrChoice]
@@ -37,6 +37,16 @@ class Trajectory(pydantic.BaseModel):
 
     @model_validator(mode="after")
     def record_metrics(self) -> Self:
+        logprobs = [
+            message_or_choice.logprobs
+            for message_or_choice in self.messages_and_choices
+            if isinstance(message_or_choice, Choice)
+            if message_or_choice.logprobs
+        ]
+        if logprobs:
+            self.metrics["completion_tokens"] = sum(
+                len(l.content or l.refusal or []) for l in logprobs
+            ) / len(logprobs)
         groups_context = get_groups_context()
         groups_context.metric_sums["reward"] += self.reward  # type: ignore
         groups_context.metric_divisors["reward"] += 1
