@@ -19,6 +19,8 @@ uv sync
 
 Then follow the SkyPilot or Local Training instructions below.
 
+> **Warning:** There is currently a bug with tool use functionality. The issue appears to be that vLLM does not return all the token log probabilities for tool use. Further investigation is needed to determine the exact cause. For now, teaching use case-specific tool use with non-tool use models is the recommended workaround.
+
 ### SkyPilot
 
 Copy the `.env.example` file to `.env` and set the environment variables:
