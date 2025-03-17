@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 from typing import TypedDict, Unpack
 
 from .tokenize import TokenizedResult
+from ..types import Verbosity
 
 
 class PackedTensors(TypedDict):
@@ -42,6 +43,7 @@ def packed_tensors_from_tokenized_results(
     seq_len: int,
     pad_token_id: int = -100,
     truncate_long_results: bool = True,
+    verbosity: Verbosity = 1,
 ) -> PackedTensors:
     token_ids: list[list[int]] = [[]]
     group_ids: list[list[int]] = [[]]
@@ -54,11 +56,13 @@ def packed_tensors_from_tokenized_results(
 
     for result in tokenized_results:
         if len(result.token_ids) > seq_len and not truncate_long_results:
-            print("Result is too long, skipping")
+            if verbosity > 1:
+                print("Result is too long, skipping")
             continue
         result_without_prompt = result.without_prompt()
         if sum(result.assistant_mask) == 0:
-            print("Result has no unique completion tokens, skipping")
+            if verbosity > 1:
+                print("Result has no unique completion tokens, skipping")
             continue
         if (
             len(token_ids[-1])

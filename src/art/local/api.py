@@ -79,7 +79,11 @@ class LocalAPI(API):
         return get_iteration(self._get_output_dir(model.name))
 
     async def _clear_iterations(
-        self, model: Model, benchmark: str, benchmark_smoothing: float = 1.0
+        self,
+        model: Model,
+        benchmark: str,
+        benchmark_smoothing: float = 1.0,
+        verbosity: Verbosity = 1,
     ) -> None:
         run = self._get_wandb_run(model)
         output_dir = self._get_output_dir(model.name)
@@ -101,7 +105,8 @@ class LocalAPI(API):
             )
             iterations_to_keep.append(best_iteration)
         except KeyError:
-            print(f'No "{benchmark}" metric found in history')
+            if verbosity > 1:
+                print(f'No "{benchmark}" metric found in history')
         clear_iteration_dirs(output_dir, iterations_to_keep)
 
     async def _get_openai_client(
@@ -244,11 +249,14 @@ class LocalAPI(API):
             tokenized_results,
             config.sequence_length,
             pad_token_id=tokenizer.eos_token_id,  # type: ignore
+            verbosity=config.verbosity,
         )
         if config.plot_tensors:
             plot_packed_tensors(packed_tensors)
         elif config.verbosity > 0:
-            print(f"Packed tensors with shape: {packed_tensors['tokens'].shape}")
+            print(
+                f"Prepared tuning data with {packed_tensors['tokens'].shape[0]} sequences of length {packed_tensors['tokens'].shape[1]}"
+            )
         model_config = model_configs[model.base_model]()
         optimizer = ComponentConfig(
             (

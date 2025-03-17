@@ -56,7 +56,10 @@ class Model:
         return await self.api._get_iteration(self)
 
     async def clear_iterations(
-        self, benchmark: str = "val/reward", benchmark_smoothing: float = 1.0
+        self,
+        benchmark: str = "val/reward",
+        benchmark_smoothing: float = 1.0,
+        verbosity: Verbosity = 1,
     ) -> None:
         """
         Delete all but the latest and best iteration checkpoints.
@@ -65,8 +68,11 @@ class Model:
             benchmark: The benchmark to use to determine the best iteration.
             benchmark_smoothing: Smoothing factor (0-1) that controls how much to reduce
                 variance when determining the best iteration. Defaults to 1.0 (no smoothing).
+            verbosity: Verbosity level.
         """
-        await self.api._clear_iterations(self, benchmark, benchmark_smoothing)
+        await self.api._clear_iterations(
+            self, benchmark, benchmark_smoothing, verbosity
+        )
 
     async def save(
         self,

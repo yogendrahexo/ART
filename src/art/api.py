@@ -73,7 +73,11 @@ class API:
         return response.json()["iteration"]
 
     async def _clear_iterations(
-        self, model: Model, benchmark: str, benchmark_smoothing: float = 1.0
+        self,
+        model: Model,
+        benchmark: str,
+        benchmark_smoothing: float = 1.0,
+        verbosity: Verbosity = 1,
     ) -> None:
         response = await self._client.post(
             f"/models/{model.name}/clear_iterations",

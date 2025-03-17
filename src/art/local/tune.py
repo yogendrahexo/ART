@@ -90,7 +90,8 @@ async def tune(
                     break
                 text = line.decode().rstrip()
                 if is_stderr:
-                    print(text)
+                    if verbosity > 1:
+                        print(text)
                 else:
                     base_stdout.append(text)
 
@@ -111,7 +112,8 @@ async def tune(
         tune_model_type=model_type,
     )
     if config.loss.kl_coef > 0:
-        print("Using reference checkpointer")
+        if verbosity > 1:
+            print("Using reference checkpointer")
         config.reference_checkpointer = _get_checkpointer_config(
             checkpoint_dir=base_checkpoint_dir,
             output_dir=output_dir,
