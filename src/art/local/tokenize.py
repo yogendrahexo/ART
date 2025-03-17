@@ -276,6 +276,11 @@ def _updated_chat_template(chat_template: str) -> str:
             {{- '\\n' }}{% generation %}{{ message.content }}{% endgeneration %}
         {%- endif %}""".strip(),
         )
+        # Add generation tags for assistant token masking (for Llama 3.1 8B)
+        .replace(
+            "{{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n'+ message['content'] | trim + '<|eot_id|>' }}",
+            "{{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n' }}{% if message['role'] == 'assistant' %}{% generation %}{{ message['content'] + '<|eot_id|>' }}{% endgeneration %}{% else %}{{ message['content'] | trim + '<|eot_id|>' }}{% endif %}",
+        )
         # Add generation tags for assistant token masking (for Llama 3.3 70B)
         .replace(
             "{{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n'+ message['content'] | trim + '<|eot_id|>' }}",

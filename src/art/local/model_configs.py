@@ -42,6 +42,18 @@ def distilled_qwen_7b() -> ModelConfig:
     )
 
 
+def llama_8b() -> ModelConfig:
+    """unsloth/Meta-Llama-3.1-8B-Instruct model config."""
+    return ModelConfig(
+        base_model="unsloth/Meta-Llama-3.1-8B-Instruct",
+        min_gpus=1,
+        tune_model_type="LLAMA3",
+        tune_model=llama3_1_8b,
+        tune_num_output_chunks=8,
+        vllm_tool_call_parser=None,
+    )
+
+
 def theta_8b() -> ModelConfig:
     """NousResearch/Hermes-2-Theta-Llama-3-8B model config."""
     return ModelConfig(
@@ -152,6 +164,7 @@ def qwen_72b() -> ModelConfig:
 
 model_configs = {
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B": distilled_qwen_7b,
+    "unsloth/Meta-Llama-3.1-8B-Instruct": llama_8b,
     "NousResearch/Hermes-2-Theta-Llama-3-8B": theta_8b,
     "NousResearch/Hermes-3-Llama-3.1-8B": hermes_8b,
     "Qwen/Qwen2.5-14B-Instruct": qwen_14b,
