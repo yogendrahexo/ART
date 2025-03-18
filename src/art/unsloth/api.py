@@ -2,7 +2,7 @@ import asyncio
 from openai import AsyncOpenAI
 import os
 import torch
-from transformers import AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from typing import cast
 import wandb
 from wandb.sdk.wandb_run import Run
@@ -13,6 +13,7 @@ from ..types import BaseModel, Message, Trajectory, TuneConfig, Verbosity
 from ..utils import format_message
 from .grpo import GRPO
 from .pack import packed_tensors_from_tokenized_results, plot_packed_tensors
+from .model import get_model_and_tokenizer
 from .model_configs import model_configs
 from .recipe import ComponentConfig, TuneRecipeConfig
 from .tokenize import tokenize_trajectory_groups
@@ -23,7 +24,7 @@ from .tune import (
     get_last_tune_metrics,
     tune,
 )
-from .vllm import kill_vllm_workers, start_vllm, vLLM
+from .vllm import max_concurrent_tokens, openai_server_task
 
 
 class UnslothAPI(API):
@@ -51,7 +52,12 @@ class UnslothAPI(API):
         os.makedirs(self._path, exist_ok=True)
         self._wandb_entity = wandb_entity
         self._wandb_project = wandb_project
-        self._vllm: vLLM | None = None
+
+        # Other initialization
+        self._model_and_tokenizer: tuple[AutoModelForCausalLM, AutoTokenizer] | None = (
+            None
+        )
+        self._openai_server_task: asyncio.Task | None = None
         self._wandb_runs: dict[str, Run] = {}
 
     async def get_or_create_model(self, name: str, base_model: BaseModel) -> Model:
@@ -116,58 +122,21 @@ class UnslothAPI(API):
         tool_use: bool,
         verbosity: Verbosity,
     ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
-        model_config = model_configs[model.base_model]()
-        self._vllm = await start_vllm(
-            get_last_iteration_dir(self._get_output_dir(model.name))
-            or model.base_model,
-            model.name,
-            max_concurrent_requests=2048,
-            named_arguments=dict(
-                block_size=32,
-                disable_log_requests=True,
-                enable_chunked_prefill=True,
-                enable_prefix_caching=True,
-                enforce_eager=True,
-                gpu_memory_utilization=0.95,
-                max_num_seqs=2048,
-                max_num_batched_tokens=16384,
-                num_scheduler_steps=8,
-                preemption_mode="swap",
-                return_tokens_as_token_ids=True,
-                swap_space=80,
-                tensor_parallel_size=torch.cuda.device_count(),
-                enable_auto_tool_choice=tool_use or None,
-                tool_call_parser=model_config.vllm_tool_call_parser,
-            ),
-            timeout=360 + 15 * torch.cuda.device_count(),
-            verbosity=verbosity,
+        if self._model_and_tokenizer is None:
+            self._model_and_tokenizer = get_model_and_tokenizer(model.base_model)
+        self._openai_server_task = openai_server_task(
+            model=self._model_and_tokenizer[0], model_name=model.name, tool_use=tool_use
         )
-        try:
-            run = self._get_wandb_run(model)
-            history_df = (
-                wandb.Api()
-                .run(f"{run.entity}/{run.project}/{run.id}")
-                .history()
-                .dropna(subset=["train/completion_tokens"])
-                .sort_values("iteration")
-            )
-            estimated_completion_tokens = history_df["train/completion_tokens"].iloc[-1]
-            if verbosity > 1:
-                print(
-                    f"Using previous iteration {estimated_completion_tokens} completion tokens per request as estimate"
-                )
-        except KeyError:
-            if verbosity > 1:
-                print(f'"train/completion_tokens" not found in run history')
-        return self._vllm.client, asyncio.Semaphore(
-            int(self._vllm.max_concurrent_tokens / estimated_completion_tokens)
-        )
+        return AsyncOpenAI(
+            base_url="http://localhost:8000/v1",
+            api_key="default",
+        ), asyncio.Semaphore(int(max_concurrent_tokens() / estimated_completion_tokens))
 
     async def _close_openai_client(self, client: AsyncOpenAI) -> None:
         await client.close()
-        if self._vllm:
-            self._vllm.process.terminate()
-            kill_vllm_workers()
+        if self._openai_server_task:
+            self._openai_server_task.cancel()
+            self._openai_server_task = None
 
     async def _save(
         self,

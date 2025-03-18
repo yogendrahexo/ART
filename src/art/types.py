@@ -17,6 +17,7 @@ BaseModel = Literal[
     "NousResearch/Hermes-3-Llama-3.1-8B",
     "unsloth/Meta-Llama-3.1-8B-Instruct",
     "Qwen/Qwen2.5-14B-Instruct",
+    "unsloth/Qwen2.5-14B-Instruct",
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
     "Qwen/Qwen2.5-32B-Instruct",
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
