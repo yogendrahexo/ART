@@ -45,6 +45,7 @@ def openai_server_task(
         "--disable-log-requests",
         "--num-scheduler-steps",
         "4",
+        "--return-tokens-as-token-ids",
         "--served-model-name",
         model_name,
     ]
