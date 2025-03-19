@@ -29,6 +29,10 @@ dev-dependencies = [
     "ipywidgets>=8.1.5",
     "skypilot[aws,cudo,do,fluidstack,gcp,lambda,paperspace,runpod]>=0.8.0",
 ]
+override-dependencies = [
+    "bitsandbytes; sys_platform == 'linux'",
+    "xformers; sys_platform == 'linux'",
+]
 
 [tool.uv.sources]
 unsloth-zoo = { git = "https://github.com/bradhilton/unsloth-zoo" }
