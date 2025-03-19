@@ -196,7 +196,7 @@ class GRPO(torch.nn.Module):
         weights = shift_tensor(weights, 0).view(-1)  # (batch_size * sequence_length,)
         num_tokens = mask.sum()
         dist = torch.distributions.Categorical(logits=logits)
-        entropy = dist.entropy()[mask]
+        # entropy = dist.entropy()[mask]
         new_logprobs = dist.log_prob(tokens)[mask]
         logprobs = logprobs[mask]
         logprobs = torch.where(torch.isnan(logprobs), new_logprobs, logprobs)
@@ -223,7 +223,7 @@ class GRPO(torch.nn.Module):
         return GRPOResult(
             num_tokens=num_tokens,
             policy_loss=policy_loss.mul(weights).sum(),
-            entropy=entropy.mul(weights).sum(),
+            # entropy=entropy.mul(weights).sum(),
             kl_div=kl_div.mul(weights).sum(),
             entropy_weight=self.entropy_coef * num_tokens,
             kl_weight=self.kl_coef * num_tokens,
