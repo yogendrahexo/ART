@@ -2,7 +2,12 @@ import asyncio
 from openai import AsyncOpenAI
 import os
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+)
 from typing import cast
 import wandb
 from wandb.sdk.wandb_run import Run
@@ -22,9 +27,9 @@ from .tokenize import tokenize_trajectory_groups
 from .tune import (
     clear_iteration_dirs,
     get_iteration,
-    train,
+    get_trainer,
 )
-from .UnslothGRPOTrainer import UnslothGRPOConfig
+from .UnslothGRPOTrainer import UnslothGRPOConfig, UnslothGRPOTrainer
 from .vllm import max_concurrent_tokens, openai_server_task
 
 
@@ -55,12 +60,14 @@ class UnslothAPI(API):
         self._wandb_project = wandb_project
 
         # Other initialization
-        self._model_and_tokenizer: tuple[AutoModelForCausalLM, AutoTokenizer] | None = (
-            None
-        )
+        self._model_and_tokenizer: (
+            tuple[AutoModelForCausalLM, PreTrainedTokenizer | PreTrainedTokenizerFast]
+            | None
+        ) = None
         self._openai_server_task: asyncio.Task | None = None
         self._packed_tensors_queue: asyncio.Queue[PackedTensors] = asyncio.Queue()
         self._train_task: asyncio.Task | None = None
+        self._trainer: UnslothGRPOTrainer | None = None
         self._wandb_runs: dict[str, Run] = {}
 
     async def get_or_create_model(self, name: str, base_model: BaseModel) -> Model:
@@ -77,6 +84,79 @@ class UnslothAPI(API):
         """
         os.makedirs(self._get_output_dir(name), exist_ok=True)
         return Model(api=self, name=name, base_model=base_model)
+
+    def _get_model_and_tokenizer(
+        self, model: Model
+    ) -> tuple[AutoModelForCausalLM, PreTrainedTokenizer | PreTrainedTokenizerFast]:
+        if self._model_and_tokenizer is None:
+            self._model_and_tokenizer = get_model_and_tokenizer(model.base_model)
+        return self._model_and_tokenizer
+
+    def _get_trainer(self, model: Model) -> UnslothGRPOTrainer:
+        if self._trainer:
+            return self._trainer
+        _model, tokenizer = self._get_model_and_tokenizer(model)
+        self._trainer = get_trainer(
+            model=_model,
+            tokenizer=tokenizer,
+            args=UnslothGRPOConfig(
+                learning_rate=5e-6,
+                adam_beta1=0.9,
+                adam_beta2=0.99,
+                weight_decay=0.1,
+                warmup_ratio=0.1,
+                lr_scheduler_type="constant",
+                optim="paged_adamw_8bit",
+                beta=0.0,
+                logging_steps=1,
+                per_device_train_batch_size=5,
+                gradient_accumulation_steps=1,  # Increase to 4 for smoother training
+                num_generations=5,  # Decrease if out of memory
+                max_prompt_length=2048,
+                max_completion_length=8192 - 2048,
+                # num_train_epochs = 1, # Set to 1 for a full training run
+                max_steps=250,
+                save_steps=250,
+                max_grad_norm=0.1,
+                report_to="none",  # Can use Weights & Biases
+                output_dir="outputs",
+                use_vllm=False,
+            ),
+            packed_tensors_queue=self._packed_tensors_queue,
+        )
+        return self._trainer
+
+    def _get_packed_tensors(
+        self,
+        model: Model,
+        trajectory_groups: list[list[Trajectory | BaseException]],
+        sequence_length: int,
+        verbosity: Verbosity,
+        plot_tensors: bool,
+    ) -> PackedTensors:
+        tokenizer = self._get_model_and_tokenizer(model)[1]
+        tokenized_results = list(
+            tokenize_trajectory_groups(
+                tokenizer,
+                [
+                    [t for t in g if isinstance(t, Trajectory)]
+                    for g in trajectory_groups
+                ],
+            )
+        )
+        packed_tensors = packed_tensors_from_tokenized_results(
+            tokenized_results,
+            sequence_length,
+            pad_token_id=tokenizer.eos_token_id,  # type: ignore
+            verbosity=verbosity,
+        )
+        if plot_tensors:
+            plot_packed_tensors(packed_tensors)
+        elif verbosity > 0:
+            print(
+                f"Prepared tuning data with {packed_tensors['tokens'].shape[0]} sequences of length {packed_tensors['tokens'].shape[1]}"
+            )
+        return packed_tensors
 
     def _get_output_dir(self, model_name: str) -> str:
         return f"{self._path}/models/{model_name}"
@@ -125,10 +205,9 @@ class UnslothAPI(API):
         tool_use: bool,
         verbosity: Verbosity,
     ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
-        if self._model_and_tokenizer is None:
-            self._model_and_tokenizer = get_model_and_tokenizer(model.base_model)
+        _model, _ = self._get_model_and_tokenizer(model)
         self._openai_server_task = openai_server_task(
-            model=self._model_and_tokenizer[0], model_name=model.name, tool_use=tool_use
+            model=_model, model_name=model.name, tool_use=tool_use
         )
         return (
             AsyncOpenAI(
@@ -212,62 +291,20 @@ class UnslothAPI(API):
         config: TuneConfig,
     ) -> None:
         await self._save(model, trajectory_groups, "train")
-        tokenizer = AutoTokenizer.from_pretrained(model.base_model)
-        tokenized_results = list(
-            tokenize_trajectory_groups(
-                tokenizer,
-                [
-                    [t for t in g if isinstance(t, Trajectory)]
-                    for g in trajectory_groups
-                ],
-            )
-        )
-        packed_tensors = packed_tensors_from_tokenized_results(
-            tokenized_results,
+        packed_tensors = self._get_packed_tensors(
+            model,
+            trajectory_groups,
             config.sequence_length,
-            pad_token_id=tokenizer.eos_token_id,  # type: ignore
-            verbosity=config.verbosity,
+            config.verbosity,
+            config.plot_tensors,
         )
-        if config.plot_tensors:
-            plot_packed_tensors(packed_tensors)
-        elif config.verbosity > 0:
-            print(
-                f"Prepared tuning data with {packed_tensors['tokens'].shape[0]} sequences of length {packed_tensors['tokens'].shape[1]}"
-            )
         self._packed_tensors_queue.put_nowait(packed_tensors)
         if self._train_task is None:
-            if self._model_and_tokenizer is None:
-                self._model_and_tokenizer = get_model_and_tokenizer(model.base_model)
-            self._train_task = asyncio.create_task(
-                train(
-                    model=self._model_and_tokenizer[0],
-                    tokenizer=self._model_and_tokenizer[1],
-                    args=UnslothGRPOConfig(
-                        learning_rate=5e-6,
-                        adam_beta1=0.9,
-                        adam_beta2=0.99,
-                        weight_decay=0.1,
-                        warmup_ratio=0.1,
-                        lr_scheduler_type="constant",
-                        optim="paged_adamw_8bit",
-                        beta=0.0,
-                        logging_steps=1,
-                        per_device_train_batch_size=5,
-                        gradient_accumulation_steps=1,  # Increase to 4 for smoother training
-                        num_generations=5,  # Decrease if out of memory
-                        max_prompt_length=2048,
-                        max_completion_length=8192 - 2048,
-                        # num_train_epochs = 1, # Set to 1 for a full training run
-                        max_steps=250,
-                        save_steps=250,
-                        max_grad_norm=0.1,
-                        report_to="none",  # Can use Weights & Biases
-                        output_dir="outputs",
-                        use_vllm=False,
-                    ),
-                    packed_tensors_queue=self._packed_tensors_queue,
-                )
-            )
+
+            async def train() -> None:
+                self._get_trainer(model).train()
+
+            self._train_task = asyncio.create_task(train())
 
     def _log_wandb_data(
         self,

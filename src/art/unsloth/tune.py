@@ -12,7 +12,12 @@ import torch
 from torchtune.modules import TransformerDecoder
 from torchtune.training import cleanup_before_training, FullModelHFCheckpointer
 from torchtune.training.metric_logging import DiskLogger
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+)
 from typing import Any, Callable, cast, IO
 
 from .pack import PackedDataset, PackedTensors, packed_tensors_to_dir
@@ -24,23 +29,23 @@ from .UnslothGRPOTrainer import UnslothGRPOConfig, UnslothGRPOTrainer
 nest_asyncio.apply()
 
 
-async def train(
+def get_trainer(
     model: AutoModelForCausalLM,
-    tokenizer: AutoTokenizer,
+    tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
     args: UnslothGRPOConfig,
     packed_tensors_queue: asyncio.Queue[PackedTensors],
-) -> None:
+) -> UnslothGRPOTrainer:
     def reward_func(*_, **__) -> float:
         return 0.0
 
     trainer = UnslothGRPOTrainer(
         model=model,
-        tokenizer=tokenizer,
         reward_funcs=reward_func,
         args=args,
         train_dataset=Dataset.from_list(
             [{"prompt": "hello, world!"} for _ in range(100)]
         ),
+        processing_class=tokenizer,
     )
 
     def _async_prepare_inputs(*_, **__) -> dict[str, torch.Tensor]:
@@ -83,7 +88,7 @@ async def train(
         return cast(dict[str, torch.Tensor], packed_tensors)
 
     trainer._prepare_inputs = _async_prepare_inputs
-    trainer.train()
+    return trainer
 
 
 def clear_iteration_dirs(output_dir: str, excluding: list[int]) -> None:
