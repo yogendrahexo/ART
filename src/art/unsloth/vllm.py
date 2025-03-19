@@ -4,11 +4,12 @@ from contextlib import asynccontextmanager
 import re
 from transformers import AutoModelForCausalLM
 from typing import AsyncIterator
-from unsloth.models import FastLanguageModel
+from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.protocol import EngineClient
 from vllm.entrypoints.openai import api_server
 from vllm.entrypoints.openai.cli_args import make_arg_parser, validate_parsed_serve_args
 from vllm.utils import FlexibleArgumentParser
+from typing import cast, Literal, TypedDict
 
 from .. import UVICORN_LOGGING_CONFIG_PATH
 
@@ -39,20 +40,103 @@ def openai_server_task(
         description="vLLM OpenAI-Compatible RESTful API server."
     )
     parser = make_arg_parser(parser)
-    args = [
-        "--api-key",
-        "default",
-        "--disable-log-requests",
-        "--num-scheduler-steps",
-        "4",
-        "--return-tokens-as-token-ids",
-        "--served-model-name",
-        model_name,
-    ]
+    engine_args = cast(
+        dict,
+        cast(type[AsyncEngineArgs], dict)(
+            disable_log_requests=True,
+            num_scheduler_steps=4,
+            served_model_name=model_name,
+        ),
+    )
+    server_args = ServerArgs(
+        api_key="default",
+        return_tokens_as_token_ids=True,
+    )
     if tool_use:
-        args.extend(["--enable-auto-tool-choice", "--tool-call-parser", "hermes"])
+        server_args["enable_auto_tool_choice"] = True
+        server_args["tool_call_parser"] = "hermes"
+    args = [
+        *[
+            f"--{key.replace('_', '-')}{f'={value}' if value is not True else ''}"
+            for args in [engine_args, server_args]
+            for key, value in args.items()
+            if value is not None
+        ],
+    ]
     namespace = parser.parse_args(args)
     validate_parsed_serve_args(namespace)
     return asyncio.create_task(
         api_server.run_server(namespace, log_config=UVICORN_LOGGING_CONFIG_PATH)
     )
+
+
+class ServerArgs(TypedDict, total=False):
+    """Arguments for the vLLM OpenAI-compatible server, not including AsyncEngineArgs.
+
+    Fields:
+        host: Host name for the server. If None, will listen on all available interfaces (0.0.0.0).
+        port: Port number for the server to listen on.
+        uvicorn_log_level: Log level for the uvicorn server.
+        allow_credentials: Whether to allow credentials in CORS requests.
+        allowed_origins: JSON string that will be parsed into a list of allowed CORS origins. Defaults to ["*"].
+        allowed_methods: JSON string that will be parsed into a list of allowed HTTP methods. Defaults to ["*"].
+        allowed_headers: JSON string that will be parsed into a list of allowed HTTP headers. Defaults to ["*"].
+        api_key: API key required for authentication. If None, no authentication is required.
+        lora_modules: List of LoRA module configurations. Each string is either in 'name=path' format or a JSON object.
+        prompt_adapters: List of prompt adapter configurations. Each string is in 'name=path' format.
+        chat_template: Path to chat template file or the template in single-line form.
+        chat_template_content_format: Format to render message content within chat templates.
+        response_role: Role name to return when request.add_generation_prompt is true.
+        ssl_keyfile: Path to SSL key file for HTTPS.
+        ssl_certfile: Path to SSL certificate file for HTTPS.
+        ssl_ca_certs: Path to CA certificates file for HTTPS.
+        enable_ssl_refresh: Whether to refresh SSL context when certificate files change.
+        ssl_cert_reqs: SSL certificate requirements (see stdlib ssl module's CERT_* constants).
+        root_path: FastAPI root_path when app is behind a path-based routing proxy.
+        middleware: List of additional ASGI middleware to apply to the app. Each string is an import path.
+        return_tokens_as_token_ids: When max_logprobs is specified, represent tokens as 'token_id:{token_id}' strings.
+        disable_frontend_multiprocessing: Run OpenAI frontend server in same process as model serving engine.
+        enable_request_id_headers: Add X-Request-Id header to responses (may impact performance at high QPS).
+        enable_auto_tool_choice: Enable automatic tool choice for supported models.
+        tool_call_parser: Parser to use for model-generated tool calls into OpenAI API format.
+        tool_parser_plugin: Plugin for registering custom tool call parsers.
+        max_log_len: Maximum number of prompt characters or prompt ID numbers to print in logs.
+        disable_fastapi_docs: Disable FastAPI's OpenAPI schema, Swagger UI, and ReDoc endpoint.
+        enable_prompt_tokens_details: Include prompt_tokens_details in usage statistics.
+        enable_server_load_tracking: Track server_load_metrics in the app state.
+        enable_reasoning: Enable reasoning capabilities for supported models.
+        reasoning_parser: Parser to use for model-generated reasoning into OpenAI API format.
+    """
+
+    host: str | None
+    port: int
+    uvicorn_log_level: Literal["debug", "info", "warning", "error", "critical", "trace"]
+    allow_credentials: bool
+    allowed_origins: str  # JSON string that will be parsed into list[str]
+    allowed_methods: str  # JSON string that will be parsed into list[str]
+    allowed_headers: str  # JSON string that will be parsed into list[str]
+    api_key: str | None
+    lora_modules: list[str] | None  # Each string is either 'name=path' or a JSON object
+    prompt_adapters: list[str] | None  # Each string is in 'name=path' format
+    chat_template: str | None
+    chat_template_content_format: Literal["auto", "string", "openai"]
+    response_role: str | None
+    ssl_keyfile: str | None
+    ssl_certfile: str | None
+    ssl_ca_certs: str | None
+    enable_ssl_refresh: bool
+    ssl_cert_reqs: int
+    root_path: str | None
+    middleware: list[str]  # Each string is an import path
+    return_tokens_as_token_ids: bool
+    disable_frontend_multiprocessing: bool
+    enable_request_id_headers: bool
+    enable_auto_tool_choice: bool
+    tool_call_parser: str | None
+    tool_parser_plugin: str
+    max_log_len: int | None
+    disable_fastapi_docs: bool
+    enable_prompt_tokens_details: bool
+    enable_server_load_tracking: bool
+    enable_reasoning: bool
+    reasoning_parser: str | None

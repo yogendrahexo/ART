@@ -1,6 +1,8 @@
 import asyncio
 from collections import Counter
+from datasets import Dataset
 import glob
+import nest_asyncio
 from omegaconf import OmegaConf
 import os
 import re
@@ -10,12 +12,78 @@ import torch
 from torchtune.modules import TransformerDecoder
 from torchtune.training import cleanup_before_training, FullModelHFCheckpointer
 from torchtune.training.metric_logging import DiskLogger
-from typing import Any, Callable, IO
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from typing import Any, Callable, cast, IO
 
 from .pack import PackedDataset, PackedTensors, packed_tensors_to_dir
 from .recipe import ComponentConfig, recipe_main, TuneRecipeConfig
 from ..tqdm import tqdm
 from ..types import Verbosity
+from .UnslothGRPOTrainer import UnslothGRPOConfig, UnslothGRPOTrainer
+
+nest_asyncio.apply()
+
+
+async def train(
+    model: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
+    args: UnslothGRPOConfig,
+    packed_tensors_queue: asyncio.Queue[PackedTensors],
+) -> None:
+    def reward_func(*_, **__) -> float:
+        return 0.0
+
+    trainer = UnslothGRPOTrainer(
+        model=model,
+        tokenizer=tokenizer,
+        reward_funcs=reward_func,
+        args=args,
+        train_dataset=Dataset.from_list(
+            [{"prompt": "hello, world!"} for _ in range(100)]
+        ),
+    )
+
+    def _async_prepare_inputs(*_, **__) -> dict[str, torch.Tensor]:
+        async def get_packed_tensors() -> PackedTensors:
+            return await packed_tensors_queue.get()
+
+        packed_tensors = asyncio.run(get_packed_tensors())
+
+        # # Concatenate prompt_ids with completion_ids
+        # prompt_completion_ids = torch.cat(
+        #     [inputs["prompt_ids"], inputs["completion_ids"]], dim=1
+        # )
+
+        # # Concatenate prompt_mask with completion_mask for logit computation
+        # attention_mask = torch.cat(
+        #     [inputs["prompt_mask"], inputs["completion_mask"]], dim=1
+        # )  # (B*G, P+C)
+
+        # logits_to_keep = inputs["completion_ids"].size(
+        #     1
+        # )  # we only need to compute the logits for the completion tokens
+
+        # with torch.inference_mode():
+        #     if trainer.ref_model is not None:
+        #         ref_per_token_logps = trainer._get_per_token_logps(
+        #             trainer.ref_model,
+        #             prompt_completion_ids,
+        #             attention_mask,
+        #             logits_to_keep,
+        #         )
+        #     else:
+        #         with trainer.accelerator.unwrap_model(trainer.model).disable_adapter():
+        #             ref_per_token_logps = trainer._get_per_token_logps(
+        #                 trainer.model,
+        #                 prompt_completion_ids,
+        #                 attention_mask,
+        #                 logits_to_keep,
+        #             )
+
+        return cast(dict[str, torch.Tensor], packed_tensors)
+
+    trainer._prepare_inputs = _async_prepare_inputs
+    trainer.train()
 
 
 def clear_iteration_dirs(output_dir: str, excluding: list[int]) -> None:

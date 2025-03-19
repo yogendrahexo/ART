@@ -11,19 +11,20 @@ from ..api import API
 from ..model import Model
 from ..types import BaseModel, Message, Trajectory, TuneConfig, Verbosity
 from ..utils import format_message
-from .grpo import GRPO
-from .pack import packed_tensors_from_tokenized_results, plot_packed_tensors
+from .pack import (
+    packed_tensors_from_tokenized_results,
+    PackedTensors,
+    plot_packed_tensors,
+)
 from .model import get_model_and_tokenizer
 from .model_configs import model_configs
-from .recipe import ComponentConfig, TuneRecipeConfig
 from .tokenize import tokenize_trajectory_groups
 from .tune import (
     clear_iteration_dirs,
     get_iteration,
-    get_last_iteration_dir,
-    get_last_tune_metrics,
-    tune,
+    train,
 )
+from .UnslothGRPOTrainer import UnslothGRPOConfig
 from .vllm import max_concurrent_tokens, openai_server_task
 
 
@@ -58,6 +59,8 @@ class UnslothAPI(API):
             None
         )
         self._openai_server_task: asyncio.Task | None = None
+        self._packed_tensors_queue: asyncio.Queue[PackedTensors] = asyncio.Queue()
+        self._train_task: asyncio.Task | None = None
         self._wandb_runs: dict[str, Run] = {}
 
     async def get_or_create_model(self, name: str, base_model: BaseModel) -> Model:
@@ -127,10 +130,15 @@ class UnslothAPI(API):
         self._openai_server_task = openai_server_task(
             model=self._model_and_tokenizer[0], model_name=model.name, tool_use=tool_use
         )
-        return AsyncOpenAI(
-            base_url="http://localhost:8000/v1",
-            api_key="default",
-        ), asyncio.Semaphore(int(max_concurrent_tokens() / estimated_completion_tokens))
+        return (
+            AsyncOpenAI(
+                base_url="http://localhost:8000/v1",
+                api_key="default",
+            ),
+            asyncio.Semaphore(
+                int(max_concurrent_tokens() / estimated_completion_tokens)
+            ),
+        )
 
     async def _close_openai_client(self, client: AsyncOpenAI) -> None:
         await client.close()
@@ -226,52 +234,40 @@ class UnslothAPI(API):
             print(
                 f"Prepared tuning data with {packed_tensors['tokens'].shape[0]} sequences of length {packed_tensors['tokens'].shape[1]}"
             )
-        model_config = model_configs[model.base_model]()
-        optimizer = ComponentConfig(
-            (
-                "torch.optim.AdamW"
-                if torch.cuda.device_count() > 1
-                else "bitsandbytes.optim.PagedAdam8bit"
-            ),
-            lr=config.lr,
-            betas=config.betas,
-            weight_decay=config.weight_decay,
-        )
-        if torch.cuda.device_count() > 1:
-            optimizer.fused = True
-        await tune(
-            base_model=model.base_model,
-            output_dir=self._get_output_dir(model.name),
-            packed_tensors=packed_tensors,
-            model=model_config.tune_model,
-            model_type=model_config.tune_model_type,
-            config=TuneRecipeConfig(
-                optimizer=optimizer,
-                loss=ComponentConfig(
-                    GRPO,
-                    clip_epsilon=config.clip_epsilon,
-                    entropy_coef=config.entropy_coef,
-                    kl_coef=config.kl_coef,
-                ),
-                shuffle=True,
-                batch_size=32768 // config.sequence_length,
-                fsdp_cpu_offload=True,
-                enable_activation_checkpointing=True,
-                enable_activation_offloading=True,
-                custom_sharded_layers=["tok_embeddings", "output"],
-                num_output_chunks=model_config.tune_num_output_chunks,
-                compile=True,
-            ),
-            verbosity=config.verbosity,
-        )
-        self._log_wandb_data(
-            model,
-            {
-                **get_last_tune_metrics(self._get_output_dir(model.name)),
-            },
-            "train",
-            iteration_offset=-1,
-        )
+        self._packed_tensors_queue.put_nowait(packed_tensors)
+        if self._train_task is None:
+            if self._model_and_tokenizer is None:
+                self._model_and_tokenizer = get_model_and_tokenizer(model.base_model)
+            self._train_task = asyncio.create_task(
+                train(
+                    model=self._model_and_tokenizer[0],
+                    tokenizer=self._model_and_tokenizer[1],
+                    args=UnslothGRPOConfig(
+                        learning_rate=5e-6,
+                        adam_beta1=0.9,
+                        adam_beta2=0.99,
+                        weight_decay=0.1,
+                        warmup_ratio=0.1,
+                        lr_scheduler_type="constant",
+                        optim="paged_adamw_8bit",
+                        beta=0.0,
+                        logging_steps=1,
+                        per_device_train_batch_size=5,
+                        gradient_accumulation_steps=1,  # Increase to 4 for smoother training
+                        num_generations=5,  # Decrease if out of memory
+                        max_prompt_length=2048,
+                        max_completion_length=8192 - 2048,
+                        # num_train_epochs = 1, # Set to 1 for a full training run
+                        max_steps=250,
+                        save_steps=250,
+                        max_grad_norm=0.1,
+                        report_to="none",  # Can use Weights & Biases
+                        output_dir="outputs",
+                        use_vllm=False,
+                    ),
+                    packed_tensors_queue=self._packed_tensors_queue,
+                )
+            )
 
     def _log_wandb_data(
         self,
