@@ -1,6 +1,5 @@
 from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
+    PreTrainedModel,
     PreTrainedTokenizer,
     PreTrainedTokenizerFast,
 )
@@ -10,7 +9,7 @@ from unsloth.models import FastLanguageModel
 def get_model_and_tokenizer(
     model_name: str,
     lora_rank: int = 32,
-) -> tuple[AutoModelForCausalLM, PreTrainedTokenizer | PreTrainedTokenizerFast]:
+) -> tuple[PreTrainedModel, PreTrainedTokenizer | PreTrainedTokenizerFast]:
 
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,

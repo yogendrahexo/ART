@@ -2,7 +2,7 @@ from argparse import Namespace
 import asyncio
 from contextlib import asynccontextmanager
 import re
-from transformers import AutoModelForCausalLM
+from transformers import PreTrainedModel
 from typing import AsyncIterator
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.protocol import EngineClient
@@ -27,7 +27,7 @@ def max_concurrent_tokens() -> int:
 
 
 def openai_server_task(
-    model: AutoModelForCausalLM, model_name: str, tool_use: bool
+    model: PreTrainedModel, model_name: str, tool_use: bool
 ) -> asyncio.Task:
     @asynccontextmanager
     async def yield_unsloth_async_engine_client(

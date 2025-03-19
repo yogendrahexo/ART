@@ -13,10 +13,8 @@ from torchtune.modules import TransformerDecoder
 from torchtune.training import cleanup_before_training, FullModelHFCheckpointer
 from torchtune.training.metric_logging import DiskLogger
 from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
+    PreTrainedModel,
+    PreTrainedTokenizerBase,
 )
 from typing import Any, Callable, cast, IO
 
@@ -30,8 +28,8 @@ nest_asyncio.apply()
 
 
 def get_trainer(
-    model: AutoModelForCausalLM,
-    tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizerBase,
     args: UnslothGRPOConfig,
     packed_tensors_queue: asyncio.Queue[PackedTensors],
 ) -> UnslothGRPOTrainer:

@@ -1,13 +1,7 @@
 import asyncio
 from openai import AsyncOpenAI
 import os
-import torch
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-)
+from transformers import PreTrainedModel, PreTrainedTokenizerBase
 from typing import cast
 import wandb
 from wandb.sdk.wandb_run import Run
@@ -22,7 +16,6 @@ from .pack import (
     plot_packed_tensors,
 )
 from .model import get_model_and_tokenizer
-from .model_configs import model_configs
 from .tokenize import tokenize_trajectory_groups
 from .tune import (
     clear_iteration_dirs,
@@ -61,8 +54,7 @@ class UnslothAPI(API):
 
         # Other initialization
         self._model_and_tokenizer: (
-            tuple[AutoModelForCausalLM, PreTrainedTokenizer | PreTrainedTokenizerFast]
-            | None
+            tuple[PreTrainedModel, PreTrainedTokenizerBase] | None
         ) = None
         self._openai_server_task: asyncio.Task | None = None
         self._packed_tensors_queue: asyncio.Queue[PackedTensors] = asyncio.Queue()
@@ -87,7 +79,7 @@ class UnslothAPI(API):
 
     def _get_model_and_tokenizer(
         self, model: Model
-    ) -> tuple[AutoModelForCausalLM, PreTrainedTokenizer | PreTrainedTokenizerFast]:
+    ) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
         if self._model_and_tokenizer is None:
             self._model_and_tokenizer = get_model_and_tokenizer(model.base_model)
         return self._model_and_tokenizer
