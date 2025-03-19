@@ -2,6 +2,7 @@ __pycache__/
 .art/
 .env
 .venv/
+grpo_trainer_lora_model/
 logs/
 streaming-chat-completions/
 unsloth_compiled_cache/
