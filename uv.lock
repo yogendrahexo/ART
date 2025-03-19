@@ -28,6 +28,8 @@ resolution-markers = [
 [manifest]
 overrides = [
     { name = "bitsandbytes", marker = "sys_platform == 'linux'" },
+    { name = "unsloth", marker = "sys_platform == 'linux'" },
+    { name = "unsloth-zoo", marker = "sys_platform == 'linux'" },
     { name = "xformers", marker = "sys_platform == 'linux'" },
 ]
 
@@ -36,13 +38,13 @@ name = "accelerate"
 version = "1.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "huggingface-hub" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "psutil" },
-    { name = "pyyaml" },
-    { name = "safetensors" },
-    { name = "torch" },
+    { name = "huggingface-hub", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "packaging", marker = "sys_platform == 'linux'" },
+    { name = "psutil", marker = "sys_platform == 'linux'" },
+    { name = "pyyaml", marker = "sys_platform == 'linux'" },
+    { name = "safetensors", marker = "sys_platform == 'linux'" },
+    { name = "torch", marker = "sys_platform == 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a9/4c/a61132924da12cef62a88c04b5825246ab83dcc1bae6291d098cfcb0b72d/accelerate-1.5.2.tar.gz", hash = "sha256:a1cf39473edc0e42772a9d9a18c9eb1ce8ffd9e1719dc0ab80670f5c1fd4dc43", size = 352341 }
 wheels = [
@@ -221,8 +223,8 @@ dependencies = [
     { name = "torch" },
     { name = "torchao" },
     { name = "torchtune" },
-    { name = "unsloth" },
-    { name = "unsloth-zoo" },
+    { name = "unsloth", marker = "sys_platform == 'linux'" },
+    { name = "unsloth-zoo", marker = "sys_platform == 'linux'" },
     { name = "vllm" },
     { name = "wandb" },
 ]
@@ -244,8 +246,8 @@ requires-dist = [
     { name = "torch", specifier = ">=2.5.1" },
     { name = "torchao", specifier = ">=0.9.0" },
     { name = "torchtune", specifier = ">=0.5.0" },
-    { name = "unsloth", specifier = ">=2025.3.15" },
-    { name = "unsloth-zoo", git = "https://github.com/bradhilton/unsloth-zoo" },
+    { name = "unsloth", marker = "sys_platform == 'linux'", specifier = ">=2025.3.15" },
+    { name = "unsloth-zoo", marker = "sys_platform == 'linux'", git = "https://github.com/bradhilton/unsloth-zoo" },
     { name = "vllm", specifier = ">=0.7.0" },
     { name = "wandb", specifier = ">=0.19.8" },
 ]
@@ -846,8 +848,8 @@ name = "cut-cross-entropy"
 version = "25.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "torch" },
-    { name = "triton", marker = "platform_system == 'Linux'" },
+    { name = "torch", marker = "sys_platform == 'linux'" },
+    { name = "triton", marker = "platform_system == 'Linux' and sys_platform == 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7e/97/45ff09cfcda7b200389204daa0125168e6544fba257adbbcdf728501d4f9/cut_cross_entropy-25.1.1.tar.gz", hash = "sha256:5fe5924509248b1aea5c890f8887c6a7759f7c8b1ebc0490e42c247c4f7c1e34", size = 22972 }
 wheels = [
@@ -932,14 +934,14 @@ name = "diffusers"
 version = "0.32.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "filelock" },
-    { name = "huggingface-hub" },
-    { name = "importlib-metadata" },
-    { name = "numpy" },
-    { name = "pillow" },
-    { name = "regex" },
-    { name = "requests" },
-    { name = "safetensors" },
+    { name = "filelock", marker = "sys_platform == 'linux'" },
+    { name = "huggingface-hub", marker = "sys_platform == 'linux'" },
+    { name = "importlib-metadata", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "pillow", marker = "sys_platform == 'linux'" },
+    { name = "regex", marker = "sys_platform == 'linux'" },
+    { name = "requests", marker = "sys_platform == 'linux'" },
+    { name = "safetensors", marker = "sys_platform == 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ee/72/d3f715e71a77f14a48f1ac081cea5bb6c6e6cd41c55b1291f401b1504679/diffusers-0.32.2.tar.gz", hash = "sha256:eb1e36b326aabb0675729af7c626caf7a76ce7ced3a126e879331790b1eaa230", size = 2614622 }
 wheels = [
@@ -1580,9 +1582,6 @@ name = "interegular"
 version = "0.3.3"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/dc/9d/8b6dde58a028a3962ce17e84d5fe73758df61378e00ef8ac3d85da34b0ff/interegular-0.3.3.tar.gz", hash = "sha256:d9b697b21b34884711399ba0f0376914b81899ce670032486d0d048344a76600", size = 24705 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/01/72d6472f80651673716d1deda2a5bbb633e563ecf94f4479da5519d69d25/interegular-0.3.3-py37-none-any.whl", hash = "sha256:b0c07007d48c89d6d19f7204972d369b2a77222722e126b6aa63aa721dc3b19c", size = 23635 },
-]
 
 [[package]]
 name = "ipykernel"
@@ -2296,11 +2295,7 @@ dependencies = [
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b5/ae/04f39c5d0d0def03247c2893d6f2b83c136bf3320a2154d7b8858f2ba72d/multiprocess-0.70.16.tar.gz", hash = "sha256:161af703d4652a0e1410be6abccecde4a7ddffd19341be0a7011b94aeb171ac1", size = 1772603 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/f7/7ec7fddc92e50714ea3745631f79bd9c96424cb2702632521028e57d3a36/multiprocess-0.70.16-py310-none-any.whl", hash = "sha256:c4a9944c67bd49f823687463660a2d6daae94c289adff97e0f9d696ba6371d02", size = 134824 },
-    { url = "https://files.pythonhosted.org/packages/50/15/b56e50e8debaf439f44befec5b2af11db85f6e0f344c3113ae0be0593a91/multiprocess-0.70.16-py311-none-any.whl", hash = "sha256:af4cabb0dac72abfb1e794fa7855c325fd2b55a10a44628a3c1ad3311c04127a", size = 143519 },
     { url = "https://files.pythonhosted.org/packages/0a/7d/a988f258104dcd2ccf1ed40fdc97e26c4ac351eeaf81d76e266c52d84e2f/multiprocess-0.70.16-py312-none-any.whl", hash = "sha256:fc0544c531920dde3b00c29863377f87e1632601092ea2daca74e4beb40faa2e", size = 146741 },
-    { url = "https://files.pythonhosted.org/packages/ea/89/38df130f2c799090c978b366cfdf5b96d08de5b29a4a293df7f7429fa50b/multiprocess-0.70.16-py38-none-any.whl", hash = "sha256:a71d82033454891091a226dfc319d0cfa8019a4e888ef9ca910372a446de4435", size = 132628 },
-    { url = "https://files.pythonhosted.org/packages/da/d9/f7f9379981e39b8c2511c9e0326d212accacb82f12fbfdc1aa2ce2a7b2b6/multiprocess-0.70.16-py39-none-any.whl", hash = "sha256:a0bafd3ae1b732eac64be2e72038231c1ba97724b60b09400d68f229fcc2fbf3", size = 133351 },
 ]
 
 [[package]]
@@ -2733,16 +2728,16 @@ name = "peft"
 version = "0.14.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "accelerate" },
-    { name = "huggingface-hub" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "psutil" },
-    { name = "pyyaml" },
-    { name = "safetensors" },
-    { name = "torch" },
-    { name = "tqdm" },
-    { name = "transformers" },
+    { name = "accelerate", marker = "sys_platform == 'linux'" },
+    { name = "huggingface-hub", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "packaging", marker = "sys_platform == 'linux'" },
+    { name = "psutil", marker = "sys_platform == 'linux'" },
+    { name = "pyyaml", marker = "sys_platform == 'linux'" },
+    { name = "safetensors", marker = "sys_platform == 'linux'" },
+    { name = "torch", marker = "sys_platform == 'linux'" },
+    { name = "tqdm", marker = "sys_platform == 'linux'" },
+    { name = "transformers", marker = "sys_platform == 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/21/33/fb0c31eaa8162c01e9250b21aa65d46a5339f17a818a97c68391db2ff44b/peft-0.14.0.tar.gz", hash = "sha256:546d69af7b42f5ef715a3d3261ed818bc917ae6055e5d7e187ed3f2c76ad72dc", size = 411902 }
 wheels = [
@@ -4330,7 +4325,7 @@ name = "triton"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "filelock", marker = "(platform_machine != 'aarch64' and platform_system != 'Darwin') or (platform_system != 'Darwin' and platform_system != 'Linux' and sys_platform != 'linux') or (platform_machine == 'aarch64' and platform_system == 'Linux')" },
+    { name = "filelock", marker = "(python_full_version < '3.13' and platform_machine != 'aarch64' and platform_system != 'Darwin') or (python_full_version < '3.13' and platform_system != 'Darwin' and platform_system != 'Linux' and sys_platform != 'linux') or (platform_machine != 'aarch64' and platform_system != 'Darwin' and sys_platform == 'linux') or (platform_machine == 'aarch64' and platform_system == 'Linux' and sys_platform == 'linux')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/78/eb/65f5ba83c2a123f6498a3097746607e5b2f16add29e36765305e4ac7fdd8/triton-3.1.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c8182f42fd8080a7d39d666814fa36c5e30cc00ea7eeeb1a2983dbb4c99a0fdc", size = 209551444 },
@@ -4340,20 +4335,16 @@ wheels = [
 name = "triton-windows"
 version = "3.2.0.post15"
 source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/b2/e48d4023f85ddf3022904e6e7d5aeb929d9c73c9e1946245117227cbb19d/triton_windows-3.2.0.post15-cp312-cp312-win_amd64.whl", hash = "sha256:25eeafa7bce6a46eb0cec631708409214a5af99684bd4a95f5c39f077d2adefc", size = 40038960 },
-    { url = "https://files.pythonhosted.org/packages/7b/c3/a510db891e445835599897a6ff07b36fc60ad239c4e88aca84477d87289a/triton_windows-3.2.0.post15-cp313-cp313-win_amd64.whl", hash = "sha256:cd0f062d5981a36e037bc1ecce0afb05072f43e2eab46a8296f566c3776830e9", size = 40039265 },
-]
 
 [[package]]
 name = "trl"
 version = "0.15.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "accelerate" },
-    { name = "datasets" },
-    { name = "rich" },
-    { name = "transformers" },
+    { name = "accelerate", marker = "sys_platform == 'linux'" },
+    { name = "datasets", marker = "sys_platform == 'linux'" },
+    { name = "rich", marker = "sys_platform == 'linux'" },
+    { name = "transformers", marker = "sys_platform == 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/95/fe/ae0d782c48eef56d0ec125ebd05998539ede7cbf0e307a48f9323998b9e7/trl-0.15.2.tar.gz", hash = "sha256:0f82190a058a0a194dbcfae1fe9548b68a0a05b2f4d1824f8db1ae7d949cdd47", size = 333962 }
 wheels = [
@@ -4365,7 +4356,7 @@ name = "typeguard"
 version = "4.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions" },
+    { name = "typing-extensions", marker = "sys_platform == 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/70/60/8cd6a3d78d00ceeb2193c02b7ed08f063d5341ccdfb24df88e61f383048e/typeguard-4.4.2.tar.gz", hash = "sha256:a6f1065813e32ef365bc3b3f503af8a96f9dd4e0033a02c28c4a4983de8c6c49", size = 75746 }
 wheels = [
@@ -4401,12 +4392,12 @@ name = "tyro"
 version = "0.9.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
-    { name = "docstring-parser" },
-    { name = "rich" },
-    { name = "shtab" },
-    { name = "typeguard" },
-    { name = "typing-extensions" },
+    { name = "colorama", marker = "platform_system == 'Windows' and sys_platform == 'linux'" },
+    { name = "docstring-parser", marker = "sys_platform == 'linux'" },
+    { name = "rich", marker = "sys_platform == 'linux'" },
+    { name = "shtab", marker = "sys_platform == 'linux'" },
+    { name = "typeguard", marker = "sys_platform == 'linux'" },
+    { name = "typing-extensions", marker = "sys_platform == 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/26/86/90242f575fa5d50c6d5fae6c47a95cd5b56b17413dc6d8391190aed58ac5/tyro-0.9.17.tar.gz", hash = "sha256:4a43386c6f3c8a06ed40a2f290de22fa3306300c68599ce5d7bd6fd1ad13c35a", size = 262449 }
 wheels = [
@@ -4464,28 +4455,28 @@ name = "unsloth"
 version = "2025.3.15"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "accelerate" },
+    { name = "accelerate", marker = "sys_platform == 'linux'" },
     { name = "bitsandbytes", marker = "sys_platform == 'linux'" },
-    { name = "datasets" },
-    { name = "diffusers" },
-    { name = "hf-transfer" },
-    { name = "huggingface-hub" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "peft" },
-    { name = "protobuf" },
-    { name = "psutil" },
-    { name = "sentencepiece" },
-    { name = "torch" },
-    { name = "torchvision" },
-    { name = "tqdm" },
-    { name = "transformers" },
-    { name = "triton", marker = "platform_system == 'Linux'" },
-    { name = "triton-windows", marker = "platform_system == 'Windows'" },
-    { name = "trl" },
-    { name = "tyro" },
-    { name = "unsloth-zoo" },
-    { name = "wheel" },
+    { name = "datasets", marker = "sys_platform == 'linux'" },
+    { name = "diffusers", marker = "sys_platform == 'linux'" },
+    { name = "hf-transfer", marker = "sys_platform == 'linux'" },
+    { name = "huggingface-hub", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "packaging", marker = "sys_platform == 'linux'" },
+    { name = "peft", marker = "sys_platform == 'linux'" },
+    { name = "protobuf", marker = "sys_platform == 'linux'" },
+    { name = "psutil", marker = "sys_platform == 'linux'" },
+    { name = "sentencepiece", marker = "sys_platform == 'linux'" },
+    { name = "torch", marker = "sys_platform == 'linux'" },
+    { name = "torchvision", marker = "sys_platform == 'linux'" },
+    { name = "tqdm", marker = "sys_platform == 'linux'" },
+    { name = "transformers", marker = "sys_platform == 'linux'" },
+    { name = "triton", marker = "platform_system == 'Linux' and sys_platform == 'linux'" },
+    { name = "triton-windows", marker = "platform_system == 'Windows' and sys_platform == 'linux'" },
+    { name = "trl", marker = "sys_platform == 'linux'" },
+    { name = "tyro", marker = "sys_platform == 'linux'" },
+    { name = "unsloth-zoo", marker = "sys_platform == 'linux'" },
+    { name = "wheel", marker = "sys_platform == 'linux'" },
     { name = "xformers", marker = "sys_platform == 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9a/0e/d50d4df7f6c73a5e84c377494c5b53b0b5f00d7d3d5173501eecac783508/unsloth-2025.3.15.tar.gz", hash = "sha256:8e5612b90f08b6a19f4fe77b04981884781c021aaf658f29fe216be469f4aebe", size = 177848 }
@@ -4496,29 +4487,33 @@ wheels = [
 [[package]]
 name = "unsloth-zoo"
 version = "2025.3.13"
-source = { git = "https://github.com/bradhilton/unsloth-zoo#a17a81aefa634389689e37e7c4c2c6b9bef88dcc" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "accelerate" },
-    { name = "cut-cross-entropy" },
-    { name = "datasets" },
-    { name = "hf-transfer" },
-    { name = "huggingface-hub" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "peft" },
-    { name = "pillow" },
-    { name = "protobuf" },
-    { name = "psutil" },
-    { name = "regex" },
-    { name = "sentencepiece" },
-    { name = "torch" },
-    { name = "tqdm" },
-    { name = "transformers" },
-    { name = "triton", marker = "platform_system == 'Linux'" },
-    { name = "triton-windows", marker = "platform_system == 'Windows'" },
-    { name = "trl" },
-    { name = "tyro" },
-    { name = "wheel" },
+    { name = "accelerate", marker = "sys_platform == 'linux'" },
+    { name = "cut-cross-entropy", marker = "sys_platform == 'linux'" },
+    { name = "datasets", marker = "sys_platform == 'linux'" },
+    { name = "hf-transfer", marker = "sys_platform == 'linux'" },
+    { name = "huggingface-hub", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "packaging", marker = "sys_platform == 'linux'" },
+    { name = "peft", marker = "sys_platform == 'linux'" },
+    { name = "pillow", marker = "sys_platform == 'linux'" },
+    { name = "protobuf", marker = "sys_platform == 'linux'" },
+    { name = "psutil", marker = "sys_platform == 'linux'" },
+    { name = "regex", marker = "sys_platform == 'linux'" },
+    { name = "sentencepiece", marker = "sys_platform == 'linux'" },
+    { name = "torch", marker = "sys_platform == 'linux'" },
+    { name = "tqdm", marker = "sys_platform == 'linux'" },
+    { name = "transformers", marker = "sys_platform == 'linux'" },
+    { name = "triton", marker = "platform_system == 'Linux' and sys_platform == 'linux'" },
+    { name = "triton-windows", marker = "platform_system == 'Windows' and sys_platform == 'linux'" },
+    { name = "trl", marker = "sys_platform == 'linux'" },
+    { name = "tyro", marker = "sys_platform == 'linux'" },
+    { name = "wheel", marker = "sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b5/05/ab71fecef7708a2820d9fc58a495f69940c740dfd7092640fbf0aeb3215d/unsloth_zoo-2025.3.13.tar.gz", hash = "sha256:fdd478e730133c154465a7318e7a428f80a8b63c00baf8c6538fca4379550241", size = 115853 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a1/15/294ba6400ae3ffb4b236e06cbfcf7d94a3fb4346e7897cc708b54157d740/unsloth_zoo-2025.3.13-py3-none-any.whl", hash = "sha256:115cdec4472cc949dc194f7865b080701da3e04d74e121f21f466674dc46117b", size = 128930 },
 ]
 
 [[package]]
