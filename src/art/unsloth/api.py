@@ -1,6 +1,7 @@
 import asyncio
 from openai import AsyncOpenAI
 import os
+from peft.peft_model import PeftModel
 import torch
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 from typing import cast
@@ -55,9 +56,9 @@ class UnslothAPI(API):
         self._wandb_project = wandb_project
 
         # Other initialization
-        self._model_and_tokenizer: (
-            tuple[PreTrainedModel, PreTrainedTokenizerBase] | None
-        ) = None
+        self._model_and_tokenizer: tuple[PeftModel, PreTrainedTokenizerBase] | None = (
+            None
+        )
         self._openai_server_task: asyncio.Task | None = None
         self._packed_tensors_queue: asyncio.Queue[PackedTensors] = asyncio.Queue()
         self._train_task: asyncio.Task | None = None
@@ -81,7 +82,7 @@ class UnslothAPI(API):
 
     def _get_model_and_tokenizer(
         self, model: Model
-    ) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
+    ) -> tuple[PeftModel, PreTrainedTokenizerBase]:
         if self._model_and_tokenizer is None:
             self._model_and_tokenizer = get_model_and_tokenizer(model.base_model)
         return self._model_and_tokenizer

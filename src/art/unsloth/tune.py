@@ -5,6 +5,7 @@ import glob
 import nest_asyncio
 from omegaconf import OmegaConf
 import os
+from peft.peft_model import PeftModel
 import re
 import shutil
 import sys
@@ -12,10 +13,7 @@ import torch
 from torchtune.modules import TransformerDecoder
 from torchtune.training import cleanup_before_training, FullModelHFCheckpointer
 from torchtune.training.metric_logging import DiskLogger
-from transformers import (
-    PreTrainedModel,
-    PreTrainedTokenizerBase,
-)
+from transformers import PreTrainedTokenizerBase
 from typing import Any, Callable, cast, IO
 
 from .grpo import GRPO
@@ -29,7 +27,7 @@ nest_asyncio.apply()
 
 
 def get_trainer(
-    model: PreTrainedModel,
+    model: PeftModel,
     tokenizer: PreTrainedTokenizerBase,
     args: UnslothGRPOConfig,
     packed_tensors_queue: asyncio.Queue[PackedTensors],
@@ -98,7 +96,7 @@ async def train(trainer: UnslothGRPOTrainer) -> None:
     )
 
     def compute_loss(
-        model: PreTrainedModel,
+        model: PeftModel,
         inputs: PackedTensors,
         return_outputs: bool = False,
         num_items_in_batch: int | None = None,

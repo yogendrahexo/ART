@@ -1,15 +1,12 @@
-from transformers import (
-    PreTrainedModel,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-)
+from peft.peft_model import PeftModel
+from transformers import PreTrainedTokenizerBase
 from unsloth.models import FastLanguageModel
 
 
 def get_model_and_tokenizer(
     model_name: str,
     lora_rank: int = 32,
-) -> tuple[PreTrainedModel, PreTrainedTokenizer | PreTrainedTokenizerFast]:
+) -> tuple[PeftModel, PreTrainedTokenizerBase]:
 
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,

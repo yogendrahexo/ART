@@ -1,8 +1,8 @@
 from argparse import Namespace
 import asyncio
 from contextlib import asynccontextmanager
+from peft.peft_model import PeftModel
 import re
-from transformers import PreTrainedModel
 from typing import AsyncIterator
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.protocol import EngineClient
@@ -27,7 +27,7 @@ def max_concurrent_tokens() -> int:
 
 
 def openai_server_task(
-    model: PreTrainedModel, model_name: str, tool_use: bool
+    model: PeftModel, model_name: str, tool_use: bool
 ) -> asyncio.Task:
     @asynccontextmanager
     async def yield_async_engine_client(
