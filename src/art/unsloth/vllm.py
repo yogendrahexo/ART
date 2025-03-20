@@ -1,6 +1,7 @@
 from argparse import Namespace
 import asyncio
 from contextlib import asynccontextmanager
+import os
 from peft.peft_model import PeftModel
 import re
 from typing import AsyncIterator
@@ -8,13 +9,27 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.protocol import EngineClient
 from vllm.entrypoints.openai import api_server
 from vllm.entrypoints.openai.cli_args import make_arg_parser, validate_parsed_serve_args
+from vllm.entrypoints.openai.serving_models import LoRARequest  # type: ignore
+import vllm.transformers_utils.tokenizer_group.tokenizer_group
 from vllm.utils import FlexibleArgumentParser
 from typing import cast, Literal, TypedDict
 
 from .. import UVICORN_LOGGING_CONFIG_PATH
+from .tune import get_last_iteration_dir
+from ..types import BaseModel
 
 
-build_async_engine_client = api_server.build_async_engine_client
+# Unsloth expects these attributes to be present
+LoRARequest.lora_tensors = {}  # type: ignore
+LoRARequest.lora_embeddings = {}  # type: ignore
+
+
+async def _return_nothing(*_, **__) -> None:
+    return None
+
+
+# Unsloth overrides this method with a non-async function that causes issues
+vllm.transformers_utils.tokenizer_group.tokenizer_group.get_lora_tokenizer_async = _return_nothing  # type: ignore
 
 
 def max_concurrent_tokens() -> int:
@@ -27,7 +42,11 @@ def max_concurrent_tokens() -> int:
 
 
 def openai_server_task(
-    model: PeftModel, model_name: str, tool_use: bool
+    model: PeftModel,
+    model_name: str,
+    base_model: BaseModel,
+    tool_use: bool,
+    lora_path: str,
 ) -> asyncio.Task:
     @asynccontextmanager
     async def yield_async_engine_client(
@@ -44,12 +63,14 @@ def openai_server_task(
         dict,
         cast(type[AsyncEngineArgs], dict)(
             disable_log_requests=True,
+            model=base_model,
             num_scheduler_steps=4,
-            served_model_name=model_name,
+            served_model_name=base_model,
         ),
     )
     server_args = ServerArgs(
         api_key="default",
+        lora_modules=[f'{{"name": "{model_name}", "path": "{lora_path}"}}'],
         return_tokens_as_token_ids=True,
     )
     if tool_use:
@@ -57,10 +78,11 @@ def openai_server_task(
         server_args["tool_call_parser"] = "hermes"
     args = [
         *[
-            f"--{key.replace('_', '-')}{f'={value}' if value is not True else ''}"
+            f"--{key.replace('_', '-')}{f'={item}' if item is not True else ''}"
             for args in [engine_args, server_args]
             for key, value in args.items()
-            if value is not None
+            for item in (value if isinstance(value, list) else [value])
+            if item is not None
         ],
     ]
     namespace = parser.parse_args(args)

@@ -22,6 +22,7 @@ from .tokenize import tokenize_trajectory_groups
 from .tune import (
     clear_iteration_dirs,
     get_iteration,
+    get_last_iteration_dir,
     get_trainer,
     train,
 )
@@ -90,9 +91,9 @@ class UnslothAPI(API):
     def _get_trainer(self, model: Model) -> UnslothGRPOTrainer:
         if self._trainer:
             return self._trainer
-        _model, tokenizer = self._get_model_and_tokenizer(model)
+        peft_model, tokenizer = self._get_model_and_tokenizer(model)
         self._trainer = get_trainer(
-            model=_model,
+            model=peft_model,
             tokenizer=tokenizer,
             args=UnslothGRPOConfig(
                 learning_rate=5e-6,
@@ -200,9 +201,17 @@ class UnslothAPI(API):
         tool_use: bool,
         verbosity: Verbosity,
     ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
-        _model, _ = self._get_model_and_tokenizer(model)
+        peft_model, _ = self._get_model_and_tokenizer(model)
+        lora_path = get_last_iteration_dir(self._get_output_dir(model.name))
+        if lora_path is None:
+            lora_path = f"{self._get_output_dir(model.name)}/0000"
+            peft_model.save_lora(lora_path)
         self._openai_server_task = openai_server_task(
-            model=_model, model_name=model.name, tool_use=tool_use
+            model=peft_model,
+            model_name=model.name,
+            base_model=model.base_model,
+            tool_use=tool_use,
+            lora_path=lora_path,
         )
         return (
             AsyncOpenAI(
