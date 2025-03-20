@@ -18,7 +18,7 @@ T = TypeVar("T")
 
 @overload
 async def gather_groups(
-    groups: Iterable[Iterable[Coroutine[Any, Any, T]]],
+    groups: Iterable[Iterable[Coroutine[Any, Any, T | Iterable[T]]]],
     *,
     pbar_desc: str | None = None,
     pbar_total_completion_tokens: bool = True,
@@ -31,7 +31,7 @@ async def gather_groups(
 
 @overload
 async def gather_groups(
-    groups: Iterable[Iterable[Coroutine[Any, Any, T]]],
+    groups: Iterable[Iterable[Coroutine[Any, Any, T | Iterable[T]]]],
     *,
     pbar_desc: str | None = None,
     pbar_total_completion_tokens: bool = True,
@@ -43,7 +43,7 @@ async def gather_groups(
 
 
 async def gather_groups(
-    groups: Iterable[Iterable[Coroutine[Any, Any, T]]],
+    groups: Iterable[Iterable[Coroutine[Any, Any, T | Iterable[T]]]],
     *,
     pbar_desc: str | None = None,
     pbar_total_completion_tokens: bool = True,
@@ -85,10 +85,19 @@ async def gather_groups(
         )
     if context.pbar is not None:
         context.pbar.close()
-    return result_groups
+    return [
+        [
+            item
+            for items in group
+            for item in (items if isinstance(items, list) else [items])
+        ]
+        for group in result_groups
+    ]
 
 
-async def wrap_coroutine(coro: Coroutine[Any, Any, T]) -> T:
+async def wrap_coroutine(
+    coro: Coroutine[Any, Any, T | Iterable[T]],
+) -> T | list[T]:
     context = get_groups_context()
     try:
         result = await coro
@@ -97,7 +106,9 @@ async def wrap_coroutine(coro: Coroutine[Any, Any, T]) -> T:
         context.update_pbar(n=0)
         raise e
     else:
-        context.update_pbar(n=1)
+        if isinstance(result, Iterable):
+            result = list(result)
+        context.update_pbar(n=len(result) if isinstance(result, list) else 1)
         return result
 
 
