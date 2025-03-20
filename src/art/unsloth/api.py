@@ -1,6 +1,7 @@
 import asyncio
 from openai import AsyncOpenAI
 import os
+import torch
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 from typing import cast
 import wandb
@@ -21,6 +22,7 @@ from .tune import (
     clear_iteration_dirs,
     get_iteration,
     get_trainer,
+    train,
 )
 from .UnslothGRPOTrainer import UnslothGRPOConfig, UnslothGRPOTrainer
 from .vllm import max_concurrent_tokens, openai_server_task
@@ -290,13 +292,18 @@ class UnslothAPI(API):
             config.verbosity,
             config.plot_tensors,
         )
-        self._packed_tensors_queue.put_nowait(packed_tensors)
+        for i in range(packed_tensors["tokens"].shape[0]):
+            self._packed_tensors_queue.put_nowait(
+                PackedTensors(
+                    **{
+                        k: v[i : i + 1]
+                        for k, v in packed_tensors.items()
+                        if isinstance(v, torch.Tensor)
+                    }
+                )
+            )
         if self._train_task is None:
-
-            async def train() -> None:
-                self._get_trainer(model).train()
-
-            self._train_task = asyncio.create_task(train())
+            self._train_task = asyncio.create_task(train(self._get_trainer(model)))
 
     def _log_wandb_data(
         self,

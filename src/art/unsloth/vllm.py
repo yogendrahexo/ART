@@ -30,12 +30,12 @@ def openai_server_task(
     model: PreTrainedModel, model_name: str, tool_use: bool
 ) -> asyncio.Task:
     @asynccontextmanager
-    async def yield_unsloth_async_engine_client(
+    async def yield_async_engine_client(
         _: Namespace,
     ) -> AsyncIterator[EngineClient]:
         yield getattr(model, "vllm_engine")
 
-    api_server.build_async_engine_client = yield_unsloth_async_engine_client
+    api_server.build_async_engine_client = yield_async_engine_client
     parser = FlexibleArgumentParser(
         description="vLLM OpenAI-Compatible RESTful API server."
     )
