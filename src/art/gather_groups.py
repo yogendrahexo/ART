@@ -103,7 +103,7 @@ async def gather_groups(
 
 async def wrap_coroutine(
     coro: Coroutine[Any, Any, "Trajectory" | Iterable["Trajectory"]],
-) -> "Trajectory" | list["Trajectory"]:
+) -> "Trajectory | list[Trajectory]":
     context = get_groups_context()
     try:
         result = await coro
