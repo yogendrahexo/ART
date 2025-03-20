@@ -87,16 +87,6 @@ async def start_vllm(
                 io.flush()
             log.write(decoded_line)
             log.flush()
-            nonlocal max_concurrent_tokens
-            if not max_concurrent_tokens:
-                match = re.search(
-                    r"Maximum concurrency for (\d+) tokens per request: ([\d.]+)x",
-                    decoded_line,
-                )
-                if match:
-                    max_concurrent_tokens = int(
-                        int(match.group(1)) * float(match.group(2))
-                    )
         log.close()
 
     if process.stdout:
@@ -134,6 +124,13 @@ async def start_vllm(
     if logging:
         print(f"vLLM server started succesfully. Logs can be found at {log_file}")
         logging = False
+    with open(log_file, "r") as f:
+        match = re.search(
+            r"Maximum concurrency for (\d+) tokens per request: ([\d.]+)x",
+            f.read(),
+        )
+        if match:
+            max_concurrent_tokens = int(int(match.group(1)) * float(match.group(2)))
     if max_concurrent_tokens is None:
         process.terminate()
         kill_vllm_workers()
