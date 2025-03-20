@@ -118,7 +118,7 @@ class API:
         )
         response.raise_for_status()
 
-    async def _save(
+    async def _log(
         self,
         model: Model,
         trajectory_groups: list[list[Trajectory | BaseException]],

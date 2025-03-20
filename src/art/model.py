@@ -74,19 +74,19 @@ class Model:
             self, benchmark, benchmark_smoothing, verbosity
         )
 
-    async def save(
+    async def log(
         self,
         trajectory_groups: list[list[Trajectory | BaseException]],
         name: str = "val",
     ) -> None:
         """
-        Save the model's performance on an evaluation batch of trajectory groups.
+        Log the model's performance for an evaluation batch of trajectory groups.
 
         Args:
             trajectory_groups: A batch of trajectory groups.
             name: The evaluation's name. Defaults to "val".
         """
-        await self.api._save(self, trajectory_groups, name)
+        await self.api._log(self, trajectory_groups, name)
 
     async def tune(
         self,

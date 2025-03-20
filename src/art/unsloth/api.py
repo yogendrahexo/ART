@@ -217,7 +217,7 @@ class UnslothAPI(API):
             self._openai_server_task.cancel()
             self._openai_server_task = None
 
-    async def _save(
+    async def _log(
         self,
         model: Model,
         trajectory_groups: list[list[Trajectory | BaseException]],
@@ -282,7 +282,7 @@ class UnslothAPI(API):
         trajectory_groups: list[list[Trajectory | BaseException]],
         config: TuneConfig,
     ) -> None:
-        await self._save(model, trajectory_groups, "train")
+        await self._log(model, trajectory_groups, "train")
         packed_tensors = self._get_packed_tensors(
             model,
             trajectory_groups,

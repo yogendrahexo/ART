@@ -119,11 +119,11 @@ class Model:
         """
         ...
 
-    async def save(
+    async def log(
         self, trajectory_groups: list[list[Trajectory]], name: str = "val"
     ) -> None:
         """
-        Save the model's performance on an evaluation batch of trajectory groups.
+        Log the model's performance for an evaluation batch of trajectory groups.
 
         Args:
             trajectory_groups: A batch of trajectory groups.
