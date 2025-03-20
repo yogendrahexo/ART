@@ -302,6 +302,7 @@ class UnslothAPI(API):
             config.verbosity,
             config.plot_tensors,
         )
+        await self._packed_tensors_queue.join()
         for i in range(packed_tensors["tokens"].shape[0]):
             self._packed_tensors_queue.put_nowait(
                 PackedTensors(
@@ -313,7 +314,30 @@ class UnslothAPI(API):
                 )
             )
         if self._train_task is None:
-            self._train_task = asyncio.create_task(train(self._get_trainer(model)))
+            self._train_task = asyncio.create_task(
+                train(self._get_trainer(model), self._packed_tensors_queue)
+            )
+        (done,), _ = await asyncio.wait(
+            [self._train_task, asyncio.create_task(self._packed_tensors_queue.join())],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if exception := done.exception():
+            raise exception
+        # Save the new lora
+        peft_model, _ = self._get_model_and_tokenizer(model)
+        iteration_dir = (
+            f"{self._get_output_dir(model.name)}/{self.__get_iteration(model):04d}"
+        )
+        peft_model.save_lora(iteration_dir)
+        # Swap in the new lora
+        lora_request = peft_model.load_lora(
+            iteration_dir,
+            load_tensors=True,
+        )
+        lora_request.lora_int_id = 1
+        lora_request.lora_name = model.name
+        peft_model.vllm_engine.engine.remove_lora(1)
+        peft_model.vllm_engine.engine.add_lora(lora_request)
 
     def _log_wandb_data(
         self,

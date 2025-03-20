@@ -51,44 +51,15 @@ def get_trainer(
 
         packed_tensors = asyncio.run(get_packed_tensors())
 
-        # # Concatenate prompt_ids with completion_ids
-        # prompt_completion_ids = torch.cat(
-        #     [inputs["prompt_ids"], inputs["completion_ids"]], dim=1
-        # )
-
-        # # Concatenate prompt_mask with completion_mask for logit computation
-        # attention_mask = torch.cat(
-        #     [inputs["prompt_mask"], inputs["completion_mask"]], dim=1
-        # )  # (B*G, P+C)
-
-        # logits_to_keep = inputs["completion_ids"].size(
-        #     1
-        # )  # we only need to compute the logits for the completion tokens
-
-        # with torch.inference_mode():
-        #     if trainer.ref_model is not None:
-        #         ref_per_token_logps = trainer._get_per_token_logps(
-        #             trainer.ref_model,
-        #             prompt_completion_ids,
-        #             attention_mask,
-        #             logits_to_keep,
-        #         )
-        #     else:
-        #         with trainer.accelerator.unwrap_model(trainer.model).disable_adapter():
-        #             ref_per_token_logps = trainer._get_per_token_logps(
-        #                 trainer.model,
-        #                 prompt_completion_ids,
-        #                 attention_mask,
-        #                 logits_to_keep,
-        #             )
-
         return cast(dict[str, torch.Tensor], packed_tensors)
 
     trainer._prepare_inputs = _async_prepare_inputs
     return trainer
 
 
-async def train(trainer: UnslothGRPOTrainer) -> None:
+async def train(
+    trainer: UnslothGRPOTrainer, packed_tensors_queue: asyncio.Queue[PackedTensors]
+) -> None:
     loss_fn = GRPO()
     loss_fn._forward_chunk = torch.compile(
         loss_fn._forward_chunk,
@@ -161,6 +132,7 @@ async def train(trainer: UnslothGRPOTrainer) -> None:
             for tensor in inputs.values():
                 tensor.to("cpu")  # type: ignore
             torch.cuda.empty_cache()
+            packed_tensors_queue.task_done()
 
     _compute_loss = trainer.compute_loss
     trainer.compute_loss = compute_loss

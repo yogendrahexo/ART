@@ -10,7 +10,7 @@ from vllm.engine.protocol import EngineClient
 from vllm.entrypoints.openai import api_server
 from vllm.entrypoints.openai.cli_args import make_arg_parser, validate_parsed_serve_args
 from vllm.entrypoints.openai.serving_models import LoRARequest  # type: ignore
-import vllm.transformers_utils.tokenizer_group.tokenizer_group
+
 from vllm.utils import FlexibleArgumentParser
 from typing import cast, Literal, TypedDict
 
@@ -22,14 +22,6 @@ from ..types import BaseModel
 # Unsloth expects these attributes to be present
 LoRARequest.lora_tensors = {}  # type: ignore
 LoRARequest.lora_embeddings = {}  # type: ignore
-
-
-async def _return_nothing(*_, **__) -> None:
-    return None
-
-
-# Unsloth overrides this method with a non-async function that causes issues
-vllm.transformers_utils.tokenizer_group.tokenizer_group.get_lora_tokenizer_async = _return_nothing  # type: ignore
 
 
 def max_concurrent_tokens() -> int:
@@ -48,6 +40,9 @@ def openai_server_task(
     tool_use: bool,
     lora_path: str,
 ) -> asyncio.Task:
+    patch_get_lora_tokenizer_async()
+    patch_listen_for_disconnect()
+
     @asynccontextmanager
     async def yield_async_engine_client(
         _: Namespace,
@@ -90,6 +85,36 @@ def openai_server_task(
     return asyncio.create_task(
         api_server.run_server(namespace, log_config=UVICORN_LOGGING_CONFIG_PATH)
     )
+
+
+def patch_get_lora_tokenizer_async() -> None:
+    """
+    Patches an Unsloth patch that causes issues with vLLM.
+
+    Specifically, Unsloth patches get_lora_tokenizer_async with a non-async function, which causes issues.
+    """
+    import vllm.transformers_utils.tokenizer_group.tokenizer_group
+
+    async def _return_nothing(*_, **__) -> None:
+        return None
+
+    vllm.transformers_utils.tokenizer_group.tokenizer_group.get_lora_tokenizer_async = _return_nothing  # type: ignore
+
+
+def patch_listen_for_disconnect() -> None:
+    async def patched_listen_for_disconnect(request):
+        try:
+            while True:
+                message = await request.receive()
+                if message["type"] == "http.disconnect":
+                    break
+        except asyncio.CancelledError:
+            pass
+
+    # Replace the original function
+    import vllm.entrypoints.utils
+
+    vllm.entrypoints.utils.listen_for_disconnect = patched_listen_for_disconnect
 
 
 class ServerArgs(TypedDict, total=False):
