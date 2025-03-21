@@ -87,6 +87,13 @@ class UnslothAPI(API):
     ) -> tuple[PeftModel, PreTrainedTokenizerBase]:
         if self._model_and_tokenizer is None:
             self._model_and_tokenizer = get_model_and_tokenizer(model.base_model)
+            if last_iteration_dir := get_last_iteration_dir(
+                self._get_output_dir(model.name)
+            ):
+                self._model_and_tokenizer[0].load_adapter(
+                    last_iteration_dir, adapter_name=model.name, is_trainable=True
+                )
+                self._model_and_tokenizer[0].set_adapter(model.name)
         return self._model_and_tokenizer
 
     def _get_trainer(self, model: Model) -> UnslothGRPOTrainer:
