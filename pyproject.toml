@@ -16,6 +16,7 @@ dependencies = [
     "unsloth-zoo ; sys_platform == 'linux'",
     "vllm>=0.7.0",
     "wandb>=0.19.8",
+    "peft>=0.14.0",
 ]
 
 [build-system]

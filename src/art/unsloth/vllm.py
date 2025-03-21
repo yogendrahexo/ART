@@ -1,6 +1,8 @@
 from argparse import Namespace
 import asyncio
 from contextlib import asynccontextmanager
+import logging
+import os
 from peft.peft_model import PeftModel
 import re
 from typing import AsyncIterator
@@ -9,7 +11,7 @@ from vllm.engine.protocol import EngineClient
 from vllm.entrypoints.openai import api_server
 from vllm.entrypoints.openai.cli_args import make_arg_parser, validate_parsed_serve_args
 from vllm.entrypoints.openai.serving_models import LoRARequest  # type: ignore
-
+from vllm.logger import _DATE_FORMAT, _FORMAT
 from vllm.utils import FlexibleArgumentParser
 from typing import cast, Literal, TypedDict
 
@@ -113,6 +115,32 @@ def patch_listen_for_disconnect() -> None:
     import vllm.entrypoints.utils
 
     vllm.entrypoints.utils.listen_for_disconnect = patched_listen_for_disconnect
+
+
+def set_vllm_log_file(path: str) -> None:
+    """
+    Sets the vLLM log file to the given path.
+    """
+
+    # Create directory for the log file if it doesn't exist
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    # Get the vLLM logger
+    vllm_logger = logging.getLogger("vllm")
+
+    # Remove existing handlers
+    for handler in vllm_logger.handlers[:]:
+        vllm_logger.removeHandler(handler)
+
+    # Create a file handler
+    file_handler = logging.FileHandler(path)
+
+    # Use the same formatter as vLLM's default
+    formatter = logging.Formatter(_FORMAT, _DATE_FORMAT)
+    file_handler.setFormatter(formatter)
+
+    # Add the handler to the logger
+    vllm_logger.addHandler(file_handler)
 
 
 class ServerArgs(TypedDict, total=False):

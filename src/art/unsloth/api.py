@@ -5,7 +5,7 @@ from peft.peft_model import PeftModel
 import torch
 from transformers import PreTrainedTokenizerBase
 from typing import cast
-from unsloth_zoo.training_utils import set_training, unset_training
+from unsloth_zoo.training_utils import set_training, unset_training  # type: ignore
 import wandb
 from wandb.sdk.wandb_run import Run
 

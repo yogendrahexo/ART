@@ -2,27 +2,109 @@ import asyncio
 import httpx
 from fastapi import FastAPI
 import os
+from peft.peft_model import PeftModel
 from pydantic import BaseModel
 import sys
 import uvicorn
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from transformers import PreTrainedTokenizerBase
+
+    from .. import types
+    from .pack import DiskPackedTensors, PackedTensors
+    from .UnslothGRPOTrainer import UnslothGRPOTrainer
 
 
 class Service(BaseModel):
     host: str
     port: int
-    # process: asyncio.subprocess.Process | None = None
+    model_name: str
+    base_model: "types.BaseModel"
+    output_dir: str
+    process: asyncio.subprocess.Process | None = None
+    _model_and_tokenizer: tuple["PeftModel", "PreTrainedTokenizerBase"] | None = None
+    _openai_server_task: asyncio.Task | None = None
+    _packed_tensors_queue: asyncio.Queue["PackedTensors"] | None = None
+    _train_task: asyncio.Task | None = None
+    _trainer: "UnslothGRPOTrainer | None" = None
 
     class Config:
         arbitrary_types_allowed = True
-        # exclude = {"process"}
+        exclude = {
+            "process",
+            "_model_and_tokenizer",
+            "_openai_server_task",
+            "_trainer",
+            "_train_task",
+        }
         extra = "allow"
 
-    async def start_openai_server(self) -> None: ...
+    async def start_openai_server(self, tool_use: bool) -> None:
+        from .tune import get_last_iteration_dir
+        from .vllm import openai_server_task
 
-    async def stop_openai_server(self) -> None: ...
+        peft_model, _ = self._get_model_and_tokenizer()
+        lora_path = get_last_iteration_dir(self.output_dir)
+        if lora_path is None:
+            lora_path = f"{self.output_dir}/0000"
+            peft_model.save_lora(lora_path)
+        self._openai_server_task = openai_server_task(
+            model=peft_model,
+            model_name=self.model_name,
+            base_model=self.base_model,
+            tool_use=tool_use,
+            lora_path=lora_path,
+        )
 
-    async def root(self) -> dict[str, str]:
-        return {"message": f"Serving on {self.host}:{self.port}"}
+    async def stop_openai_server(self) -> None:
+        if self._openai_server_task:
+            self._openai_server_task.cancel()
+            self._openai_server_task = None
+
+    async def tune(self, disk_packed_tensors: DiskPackedTensors) -> None:
+        import torch
+        from unsloth_zoo.training_utils import set_training, unset_training  # type: ignore
+
+        from .pack import packed_tensors_from_dir
+        from .tune import get_iteration, train
+
+        packed_tensors = packed_tensors_from_dir(**disk_packed_tensors)
+        queue = self._get_packed_tensors_queue()
+        await queue.join()
+        peft_model, _ = self._get_model_and_tokenizer()
+        set_training(peft_model)
+        for i in range(packed_tensors["tokens"].shape[0]):
+            queue.put_nowait(
+                PackedTensors(
+                    **{
+                        k: v[i : i + 1]
+                        for k, v in packed_tensors.items()
+                        if isinstance(v, torch.Tensor)
+                    }
+                )
+            )
+        if self._train_task is None:
+            self._train_task = asyncio.create_task(train(self._get_trainer(), queue))
+        (done,), _ = await asyncio.wait(
+            [self._train_task, asyncio.create_task(queue.join())],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        unset_training(peft_model)
+        if exception := done.exception():
+            raise exception
+        # Save the new lora
+        iteration_dir = f"{self.output_dir}/{get_iteration(self.output_dir) + 1:04d}"
+        peft_model.save_lora(iteration_dir)
+        # Swap in the new lora
+        lora_request = peft_model.load_lora(
+            iteration_dir,
+            load_tensors=True,
+        )
+        lora_request.lora_int_id = 1
+        lora_request.lora_name = self.model_name
+        peft_model.vllm_engine.engine.remove_lora(1)
+        peft_model.vllm_engine.engine.add_lora(lora_request)
 
     async def serve(self, serve: bool) -> "Service":
         if not serve:
@@ -48,21 +130,83 @@ class Service(BaseModel):
         # Create a client for the service
         client = httpx.AsyncClient(base_url=f"http://{self.host}:{self.port}")
 
-        # Define the root endpoint
-        async def root() -> dict[str, str]:
-            response = await client.get("/")
+        async def start_openai_server(tool_use: bool) -> None:
+            response = await client.post("/start_openai_server", json=tool_use)
             response.raise_for_status()
-            return response.json()
 
-        # Set the root endpoint
-        self.root = root
+        async def stop_openai_server() -> None:
+            response = await client.post("/stop_openai_server")
+            response.raise_for_status()
+
+        async def tune(disk_packed_tensors: DiskPackedTensors) -> None:
+            response = await client.post("/tune", json=disk_packed_tensors)
+            response.raise_for_status()
+
+        # Set the endpoints
+        self.start_openai_server = start_openai_server
+        self.stop_openai_server = stop_openai_server
+        self.tune = tune
 
         print(f"Started service on {self.host}:{self.port} (PID: {self.process.pid})")
         return self
 
+    def _get_model_and_tokenizer(self) -> tuple["PeftModel", "PreTrainedTokenizerBase"]:
+        from .model import get_model_and_tokenizer
+
+        if self._model_and_tokenizer is None:
+            self._model_and_tokenizer = get_model_and_tokenizer(self.base_model)
+        return self._model_and_tokenizer
+
+    def _get_packed_tensors_queue(self) -> asyncio.Queue["PackedTensors"]:
+        if self._packed_tensors_queue is None:
+            self._packed_tensors_queue = asyncio.Queue()
+        return self._packed_tensors_queue
+
+    def _get_trainer(self) -> "UnslothGRPOTrainer":
+        from .tune import get_trainer
+        from .UnslothGRPOTrainer import UnslothGRPOConfig
+
+        if self._trainer:
+            return self._trainer
+        peft_model, tokenizer = self._get_model_and_tokenizer()
+        self._trainer = get_trainer(
+            model=peft_model,
+            tokenizer=tokenizer,
+            args=UnslothGRPOConfig(
+                learning_rate=5e-6,
+                adam_beta1=0.9,
+                adam_beta2=0.99,
+                weight_decay=0.1,
+                warmup_ratio=0.1,
+                lr_scheduler_type="constant",
+                optim="paged_adamw_8bit",
+                beta=0.0,
+                logging_steps=1,
+                per_device_train_batch_size=5,
+                gradient_accumulation_steps=8,  # Increase to 4 for smoother training
+                num_generations=5,  # Decrease if out of memory
+                max_prompt_length=2048,
+                max_completion_length=8192 - 2048,
+                # num_train_epochs = 1, # Set to 1 for a full training run
+                max_steps=250,
+                save_steps=250,
+                max_grad_norm=10.0,
+                report_to="none",  # Can use Weights & Biases
+                output_dir="outputs",
+                use_vllm=False,
+            ),
+            packed_tensors_queue=self._get_packed_tensors_queue(),
+        )
+        return self._trainer
+
 
 if __name__ == "__main__":
+    from .vllm import set_vllm_log_file
+
     service = Service.model_validate_json(sys.argv[1])
     app = FastAPI()
-    app.get("/")(service.root)
+    app.post("/start_openai_server")(service.start_openai_server)
+    app.post("/stop_openai_server")(service.stop_openai_server)
+    app.post("/tune")(service.tune)
+    set_vllm_log_file(f"{service.output_dir}/logs/vllm.log")
     uvicorn.run(app, host=service.host, port=service.port)

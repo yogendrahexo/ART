@@ -20,7 +20,7 @@ if os.path.exists(vllm_log_path):
 
 # Import unsloth before transformers
 try:
-    import unsloth
+    import unsloth  # type: ignore
 except ImportError:
     # unsloth may not be available on all platforms
     pass
