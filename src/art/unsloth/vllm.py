@@ -108,7 +108,7 @@ def patch_listen_for_disconnect() -> None:
                 message = await request.receive()
                 if message["type"] == "http.disconnect":
                     break
-        except asyncio.CancelledError:
+        except UnboundLocalError:
             pass
 
     # Replace the original function

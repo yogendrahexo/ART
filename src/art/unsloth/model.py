@@ -16,7 +16,7 @@ def get_model_and_tokenizer(
         # vLLM args
         disable_log_requests=True,
         disable_log_stats=False,
-        gpu_memory_utilization=0.6,  # Reduce if out of memory
+        gpu_memory_utilization=0.7,  # Reduce if out of memory
         max_lora_rank=lora_rank,
         num_scheduler_steps=16,
         multi_step_stream_outputs=False,

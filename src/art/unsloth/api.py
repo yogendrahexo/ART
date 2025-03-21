@@ -3,8 +3,9 @@ from openai import AsyncOpenAI
 import os
 from peft.peft_model import PeftModel
 import torch
-from transformers import PreTrainedModel, PreTrainedTokenizerBase
+from transformers import PreTrainedTokenizerBase
 from typing import cast
+from unsloth_zoo.training_utils import set_training, unset_training
 import wandb
 from wandb.sdk.wandb_run import Run
 
@@ -106,14 +107,14 @@ class UnslothAPI(API):
                 beta=0.0,
                 logging_steps=1,
                 per_device_train_batch_size=5,
-                gradient_accumulation_steps=1,  # Increase to 4 for smoother training
+                gradient_accumulation_steps=8,  # Increase to 4 for smoother training
                 num_generations=5,  # Decrease if out of memory
                 max_prompt_length=2048,
                 max_completion_length=8192 - 2048,
                 # num_train_epochs = 1, # Set to 1 for a full training run
                 max_steps=250,
                 save_steps=250,
-                max_grad_norm=0.1,
+                max_grad_norm=10.0,
                 report_to="none",  # Can use Weights & Biases
                 output_dir="outputs",
                 use_vllm=False,
@@ -303,6 +304,8 @@ class UnslothAPI(API):
             config.plot_tensors,
         )
         await self._packed_tensors_queue.join()
+        peft_model, _ = self._get_model_and_tokenizer(model)
+        set_training(peft_model)
         for i in range(packed_tensors["tokens"].shape[0]):
             self._packed_tensors_queue.put_nowait(
                 PackedTensors(
@@ -321,12 +324,12 @@ class UnslothAPI(API):
             [self._train_task, asyncio.create_task(self._packed_tensors_queue.join())],
             return_when=asyncio.FIRST_COMPLETED,
         )
+        unset_training(peft_model)
         if exception := done.exception():
             raise exception
         # Save the new lora
-        peft_model, _ = self._get_model_and_tokenizer(model)
         iteration_dir = (
-            f"{self._get_output_dir(model.name)}/{self.__get_iteration(model):04d}"
+            f"{self._get_output_dir(model.name)}/{self.__get_iteration(model) + 1:04d}"
         )
         peft_model.save_lora(iteration_dir)
         # Swap in the new lora
