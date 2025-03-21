@@ -192,7 +192,9 @@ class UnslothAPI(API):
             asyncio.Semaphore(
                 int(
                     max_concurrent_tokens(
-                        f"{self._get_output_dir(model.name)}/logs/vllm.log"
+                        "./logs/vllm.log"
+                        if self._in_process
+                        else f"{self._get_output_dir(model.name)}/logs/vllm.log"
                     )
                     / estimated_completion_tokens
                 )
