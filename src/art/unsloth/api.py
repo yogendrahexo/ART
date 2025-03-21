@@ -19,7 +19,7 @@ from .pack import (
     plot_packed_tensors,
 )
 from .model import get_model_and_tokenizer
-from .tokenize import tokenize_trajectory_groups
+from .tokenization import tokenize_trajectory_groups
 from .tune import (
     clear_iteration_dirs,
     get_iteration,

@@ -1,7 +1,6 @@
 from argparse import Namespace
 import asyncio
 from contextlib import asynccontextmanager
-import os
 from peft.peft_model import PeftModel
 import re
 from typing import AsyncIterator
@@ -15,7 +14,6 @@ from vllm.utils import FlexibleArgumentParser
 from typing import cast, Literal, TypedDict
 
 from .. import UVICORN_LOGGING_CONFIG_PATH
-from .tune import get_last_iteration_dir
 from ..types import BaseModel
 
 
