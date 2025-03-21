@@ -2,12 +2,14 @@ import asyncio
 from openai import AsyncOpenAI
 import os
 from peft.peft_model import PeftModel
-import torch
 from transformers import PreTrainedTokenizerBase
 from typing import cast
-from unsloth_zoo.training_utils import set_training, unset_training  # type: ignore
 import wandb
 from wandb.sdk.wandb_run import Run
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from transformers import PreTrainedTokenizerBase
 
 from ..api import API
 from ..model import Model
@@ -15,20 +17,18 @@ from ..types import BaseModel, Message, Trajectory, TuneConfig, Verbosity
 from ..utils import format_message
 from .pack import (
     packed_tensors_from_tokenized_results,
+    packed_tensors_to_dir,
     PackedTensors,
     plot_packed_tensors,
 )
 from .model import get_model_and_tokenizer
+from .service import Service, StartOpenaiServer
 from .tokenization import tokenize_trajectory_groups
 from .tune import (
     clear_iteration_dirs,
     get_iteration,
-    get_last_iteration_dir,
-    get_trainer,
-    train,
 )
-from .UnslothGRPOTrainer import UnslothGRPOConfig, UnslothGRPOTrainer
-from .vllm import max_concurrent_tokens, openai_server_task
+from .vllm_utils import max_concurrent_tokens
 
 
 class UnslothAPI(API):
@@ -36,6 +36,7 @@ class UnslothAPI(API):
     def __init__(
         self,
         *,
+        in_process: bool = False,
         path: str = "./.art",
         wandb_entity: str | None = None,
         wandb_project: str | None = None,
@@ -48,10 +49,12 @@ class UnslothAPI(API):
             If you don't have a W&B account, you can create one at https://wandb.ai.
 
         Args:
+            in_process: Whether to run the Unsloth service in-process.
             path: The path to the local directory. Defaults to "./.art".
             wandb_entity: The preferred Weights & Biases entity.
             wandb_project: The preferred Weights & Biases project.
         """
+        self._in_process = in_process
         self._path = path
         os.makedirs(self._path, exist_ok=True)
         self._wandb_entity = wandb_entity
@@ -62,9 +65,8 @@ class UnslothAPI(API):
             None
         )
         self._openai_server_task: asyncio.Task | None = None
-        self._packed_tensors_queue: asyncio.Queue[PackedTensors] = asyncio.Queue()
-        self._train_task: asyncio.Task | None = None
-        self._trainer: UnslothGRPOTrainer | None = None
+        self._services: dict[str, Service] = {}
+        self._tokenizers: dict[str, "PreTrainedTokenizerBase"] = {}
         self._wandb_runs: dict[str, Run] = {}
 
     async def get_or_create_model(self, name: str, base_model: BaseModel) -> Model:
@@ -82,53 +84,18 @@ class UnslothAPI(API):
         os.makedirs(self._get_output_dir(name), exist_ok=True)
         return Model(api=self, name=name, base_model=base_model)
 
-    def _get_model_and_tokenizer(
-        self, model: Model
-    ) -> tuple[PeftModel, PreTrainedTokenizerBase]:
-        if self._model_and_tokenizer is None:
-            self._model_and_tokenizer = get_model_and_tokenizer(model.base_model)
-            if last_iteration_dir := get_last_iteration_dir(
-                self._get_output_dir(model.name)
-            ):
-                self._model_and_tokenizer[0].load_adapter(
-                    last_iteration_dir, adapter_name=model.name, is_trainable=True
-                )
-                self._model_and_tokenizer[0].set_adapter(model.name)
-        return self._model_and_tokenizer
-
-    def _get_trainer(self, model: Model) -> UnslothGRPOTrainer:
-        if self._trainer:
-            return self._trainer
-        peft_model, tokenizer = self._get_model_and_tokenizer(model)
-        self._trainer = get_trainer(
-            model=peft_model,
-            tokenizer=tokenizer,
-            args=UnslothGRPOConfig(
-                learning_rate=5e-6,
-                adam_beta1=0.9,
-                adam_beta2=0.99,
-                weight_decay=0.1,
-                warmup_ratio=0.1,
-                lr_scheduler_type="constant",
-                optim="paged_adamw_8bit",
-                beta=0.0,
-                logging_steps=1,
-                per_device_train_batch_size=5,
-                gradient_accumulation_steps=8,  # Increase to 4 for smoother training
-                num_generations=5,  # Decrease if out of memory
-                max_prompt_length=2048,
-                max_completion_length=8192 - 2048,
-                # num_train_epochs = 1, # Set to 1 for a full training run
-                max_steps=250,
-                save_steps=250,
-                max_grad_norm=10.0,
-                report_to="none",  # Can use Weights & Biases
-                output_dir="outputs",
-                use_vllm=False,
-            ),
-            packed_tensors_queue=self._packed_tensors_queue,
-        )
-        return self._trainer
+    async def _get_service(self, model: Model) -> Service:
+        if model.name not in self._services:
+            self._services[model.name] = Service(
+                host="localhost",
+                port=8089 + len(self._services),
+                model_name=model.name,
+                base_model=model.base_model,
+                output_dir=self._get_output_dir(model.name),
+            )
+            if not self._in_process:
+                await self._services[model.name].serve()
+        return self._services[model.name]
 
     def _get_packed_tensors(
         self,
@@ -138,7 +105,13 @@ class UnslothAPI(API):
         verbosity: Verbosity,
         plot_tensors: bool,
     ) -> PackedTensors:
-        tokenizer = self._get_model_and_tokenizer(model)[1]
+        from transformers import AutoTokenizer
+
+        if not model.base_model in self._tokenizers:
+            self._tokenizers[model.base_model] = AutoTokenizer.from_pretrained(
+                model.base_model
+            )
+        tokenizer = self._tokenizers[model.base_model]
         tokenized_results = list(
             tokenize_trajectory_groups(
                 tokenizer,
@@ -209,33 +182,25 @@ class UnslothAPI(API):
         tool_use: bool,
         verbosity: Verbosity,
     ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
-        peft_model, _ = self._get_model_and_tokenizer(model)
-        lora_path = get_last_iteration_dir(self._get_output_dir(model.name))
-        if lora_path is None:
-            lora_path = f"{self._get_output_dir(model.name)}/0000"
-            peft_model.save_lora(lora_path)
-        self._openai_server_task = openai_server_task(
-            model=peft_model,
-            model_name=model.name,
-            base_model=model.base_model,
-            tool_use=tool_use,
-            lora_path=lora_path,
-        )
+        service = await self._get_service(model)
+        await service.start_openai_server(StartOpenaiServer(tool_use=tool_use))
         return (
             AsyncOpenAI(
-                base_url="http://localhost:8000/v1",
+                base_url=f"http://localhost:{service.port - 89}/v1",
                 api_key="default",
             ),
             asyncio.Semaphore(
-                int(max_concurrent_tokens() / estimated_completion_tokens)
+                int(
+                    max_concurrent_tokens(
+                        f"{self._get_output_dir(model.name)}/logs/vllm.log"
+                    )
+                    / estimated_completion_tokens
+                )
             ),
         )
 
     async def _close_openai_client(self, client: AsyncOpenAI) -> None:
         await client.close()
-        if self._openai_server_task:
-            self._openai_server_task.cancel()
-            self._openai_server_task = None
 
     async def _log(
         self,
@@ -302,6 +267,7 @@ class UnslothAPI(API):
         trajectory_groups: list[list[Trajectory | BaseException]],
         config: TuneConfig,
     ) -> None:
+        service = await self._get_service(model)
         await self._log(model, trajectory_groups, "train")
         packed_tensors = self._get_packed_tensors(
             model,
@@ -310,44 +276,10 @@ class UnslothAPI(API):
             config.verbosity,
             config.plot_tensors,
         )
-        await self._packed_tensors_queue.join()
-        peft_model, _ = self._get_model_and_tokenizer(model)
-        set_training(peft_model)
-        for i in range(packed_tensors["tokens"].shape[0]):
-            self._packed_tensors_queue.put_nowait(
-                PackedTensors(
-                    **{
-                        k: v[i : i + 1]
-                        for k, v in packed_tensors.items()
-                        if isinstance(v, torch.Tensor)
-                    }
-                )
-            )
-        if self._train_task is None:
-            self._train_task = asyncio.create_task(
-                train(self._get_trainer(model), self._packed_tensors_queue)
-            )
-        (done,), _ = await asyncio.wait(
-            [self._train_task, asyncio.create_task(self._packed_tensors_queue.join())],
-            return_when=asyncio.FIRST_COMPLETED,
+        disk_packed_tensors = packed_tensors_to_dir(
+            packed_tensors, f"{self._get_output_dir(model.name)}/tensors"
         )
-        unset_training(peft_model)
-        if exception := done.exception():
-            raise exception
-        # Save the new lora
-        iteration_dir = (
-            f"{self._get_output_dir(model.name)}/{self.__get_iteration(model) + 1:04d}"
-        )
-        peft_model.save_lora(iteration_dir)
-        # Swap in the new lora
-        lora_request = peft_model.load_lora(
-            iteration_dir,
-            load_tensors=True,
-        )
-        lora_request.lora_int_id = 1
-        lora_request.lora_name = model.name
-        peft_model.vllm_engine.engine.remove_lora(1)
-        peft_model.vllm_engine.engine.add_lora(lora_request)
+        await service.tune(disk_packed_tensors)
 
     def _log_wandb_data(
         self,

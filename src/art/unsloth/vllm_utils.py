@@ -24,8 +24,8 @@ LoRARequest.lora_tensors = {}  # type: ignore
 LoRARequest.lora_embeddings = {}  # type: ignore
 
 
-def max_concurrent_tokens() -> int:
-    with open("./logs/vllm.log", "r") as f:
+def max_concurrent_tokens(path: str) -> int:
+    with open(path, "r") as f:
         matches = re.findall(
             r"Maximum concurrency for (\d+) tokens per request: ([\d.]+)x",
             f.read(),

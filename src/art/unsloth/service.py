@@ -1,3 +1,7 @@
+if __name__ == "__main__":
+    import unsloth  # type: ignore
+
+
 import asyncio
 import httpx
 from fastapi import FastAPI
@@ -5,15 +9,19 @@ import os
 from peft.peft_model import PeftModel
 from pydantic import BaseModel
 import sys
+from transformers import PreTrainedTokenizerBase
 import uvicorn
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizerBase
+from art import types
+from art.unsloth.pack import DiskPackedTensors, PackedTensors
 
-    from .. import types
-    from .pack import DiskPackedTensors, PackedTensors
+if TYPE_CHECKING:
     from .UnslothGRPOTrainer import UnslothGRPOTrainer
+
+
+class StartOpenaiServer(BaseModel):
+    tool_use: bool
 
 
 class Service(BaseModel):
@@ -40,20 +48,21 @@ class Service(BaseModel):
         }
         extra = "allow"
 
-    async def start_openai_server(self, tool_use: bool) -> None:
-        from .tune import get_last_iteration_dir
-        from .vllm import openai_server_task
+    async def start_openai_server(self, request: StartOpenaiServer) -> None:
+        from art.unsloth.tune import get_last_iteration_dir
+        from art.unsloth.vllm_utils import openai_server_task
 
         peft_model, _ = self._get_model_and_tokenizer()
         lora_path = get_last_iteration_dir(self.output_dir)
         if lora_path is None:
             lora_path = f"{self.output_dir}/0000"
             peft_model.save_lora(lora_path)
+        await self.stop_openai_server()
         self._openai_server_task = openai_server_task(
             model=peft_model,
             model_name=self.model_name,
             base_model=self.base_model,
-            tool_use=tool_use,
+            tool_use=request.tool_use,
             lora_path=lora_path,
         )
 
@@ -62,12 +71,12 @@ class Service(BaseModel):
             self._openai_server_task.cancel()
             self._openai_server_task = None
 
-    async def tune(self, disk_packed_tensors: DiskPackedTensors) -> None:
+    async def tune(self, disk_packed_tensors: "DiskPackedTensors") -> None:
         import torch
         from unsloth_zoo.training_utils import set_training, unset_training  # type: ignore
 
-        from .pack import packed_tensors_from_dir
-        from .tune import get_iteration, train
+        from art.unsloth.pack import packed_tensors_from_dir
+        from art.unsloth.tune import get_iteration, train
 
         packed_tensors = packed_tensors_from_dir(**disk_packed_tensors)
         queue = self._get_packed_tensors_queue()
@@ -106,9 +115,7 @@ class Service(BaseModel):
         peft_model.vllm_engine.engine.remove_lora(1)
         peft_model.vllm_engine.engine.add_lora(lora_request)
 
-    async def serve(self, serve: bool) -> "Service":
-        if not serve:
-            return self
+    async def serve(self) -> "Service":
         # Ensure logs directory exists
         os.makedirs("./logs", exist_ok=True)
 
@@ -130,16 +137,22 @@ class Service(BaseModel):
         # Create a client for the service
         client = httpx.AsyncClient(base_url=f"http://{self.host}:{self.port}")
 
-        async def start_openai_server(tool_use: bool) -> None:
-            response = await client.post("/start_openai_server", json=tool_use)
+        async def start_openai_server(request: StartOpenaiServer) -> None:
+            response = await client.post(
+                "/start_openai_server",
+                json=request.model_dump(),
+                timeout=httpx.Timeout(600.0),
+            )
             response.raise_for_status()
 
         async def stop_openai_server() -> None:
             response = await client.post("/stop_openai_server")
             response.raise_for_status()
 
-        async def tune(disk_packed_tensors: DiskPackedTensors) -> None:
-            response = await client.post("/tune", json=disk_packed_tensors)
+        async def tune(disk_packed_tensors: "DiskPackedTensors") -> None:
+            response = await client.post(
+                "/tune", json=disk_packed_tensors, timeout=httpx.Timeout(None)
+            )
             response.raise_for_status()
 
         # Set the endpoints
@@ -147,11 +160,18 @@ class Service(BaseModel):
         self.stop_openai_server = stop_openai_server
         self.tune = tune
 
+        while True:
+            try:
+                await client.get("/health")
+                break
+            except httpx.ConnectError:
+                await asyncio.sleep(1)
+
         print(f"Started service on {self.host}:{self.port} (PID: {self.process.pid})")
         return self
 
     def _get_model_and_tokenizer(self) -> tuple["PeftModel", "PreTrainedTokenizerBase"]:
-        from .model import get_model_and_tokenizer
+        from art.unsloth.model import get_model_and_tokenizer
 
         if self._model_and_tokenizer is None:
             self._model_and_tokenizer = get_model_and_tokenizer(self.base_model)
@@ -163,8 +183,8 @@ class Service(BaseModel):
         return self._packed_tensors_queue
 
     def _get_trainer(self) -> "UnslothGRPOTrainer":
-        from .tune import get_trainer
-        from .UnslothGRPOTrainer import UnslothGRPOConfig
+        from art.unsloth.tune import get_trainer
+        from art.unsloth.UnslothGRPOTrainer import UnslothGRPOConfig
 
         if self._trainer:
             return self._trainer
@@ -201,10 +221,11 @@ class Service(BaseModel):
 
 
 if __name__ == "__main__":
-    from .vllm import set_vllm_log_file
+    from art.unsloth.vllm_utils import set_vllm_log_file
 
     service = Service.model_validate_json(sys.argv[1])
     app = FastAPI()
+    app.get("/health")(lambda: "OK")
     app.post("/start_openai_server")(service.start_openai_server)
     app.post("/stop_openai_server")(service.stop_openai_server)
     app.post("/tune")(service.tune)
