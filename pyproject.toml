@@ -38,5 +38,5 @@ override-dependencies = [
 ]
 
 [tool.uv.sources]
-unsloth = { git = "https://github.com/unslothai/unsloth" }
-unsloth-zoo = { git = "https://github.com/unslothai/unsloth-zoo" }
+unsloth = { git = "https://github.com/bradhilton/unsloth" }
+unsloth-zoo = { git = "https://github.com/bradhilton/unsloth-zoo" }
