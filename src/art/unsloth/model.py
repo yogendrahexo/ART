@@ -10,16 +10,17 @@ def get_model_and_tokenizer(
 
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=16384,
+        max_seq_length=8192,
         load_in_4bit=True,  # False for LoRA 16bit
         fast_inference=True,  # Enable vLLM fast inference
         # vLLM args
         disable_log_requests=True,
         disable_log_stats=False,
         enable_prefix_caching=True,
-        gpu_memory_utilization=0.7,  # Reduce if out of memory
+        gpu_memory_utilization=0.64,  # Reduce if out of memory
         max_lora_rank=lora_rank,
-        max_num_seqs=2048,
+        # max_num_seqs=1024,
+        # enforce_eager=True,
         num_scheduler_steps=16,
         use_async=True,
     )

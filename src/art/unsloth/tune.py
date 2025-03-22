@@ -28,9 +28,7 @@ def get_trainer(
         model=model,
         reward_funcs=reward_func,
         args=args,
-        train_dataset=Dataset.from_list(
-            [{"prompt": "hello, world!"} for _ in range(100)]
-        ),
+        train_dataset=Dataset.from_list([{"prompt": ""} for _ in range(100_000)]),
         processing_class=tokenizer,
     )
 

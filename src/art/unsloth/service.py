@@ -5,19 +5,46 @@ if __name__ == "__main__":
 import asyncio
 import httpx
 from fastapi import FastAPI
+import functools
 import os
 from peft.peft_model import PeftModel
 from pydantic import BaseModel
 import sys
+import traceback
 from transformers import PreTrainedTokenizerBase
 import uvicorn
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar, Callable, ParamSpec, Awaitable, cast, Union
 
 from art import types
 from art.unsloth.pack import DiskPackedTensors, PackedTensors
 
+
 if TYPE_CHECKING:
     from .UnslothGRPOTrainer import UnslothGRPOTrainer
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+
+def catch_and_print_errors(
+    func: Callable[P, Awaitable[T]]
+) -> Callable[P, Awaitable[T]]:
+    """
+    Decorator that catches, prints, and reraises any errors that occur in the wrapped function.
+    Works with both synchronous and asynchronous functions.
+    """
+
+    @functools.wraps(func)
+    async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        try:
+            return await cast(Awaitable[T], func(*args, **kwargs))
+        except Exception as e:
+            if __name__ == "__main__":
+                print(f"Error in {func.__name__}: {e}")
+                traceback.print_exc()
+            raise
+
+    return async_wrapper
 
 
 class StartOpenaiServer(BaseModel):
@@ -48,6 +75,7 @@ class Service(BaseModel):
         }
         extra = "allow"
 
+    @catch_and_print_errors
     async def start_openai_server(self, request: StartOpenaiServer) -> None:
         from art.unsloth.tune import get_last_iteration_dir
         from art.unsloth.vllm_utils import openai_server_task
@@ -69,11 +97,13 @@ class Service(BaseModel):
         for task in done:
             task.result()
 
+    @catch_and_print_errors
     async def stop_openai_server(self) -> None:
         if self._openai_server_task:
             self._openai_server_task.cancel()
             self._openai_server_task = None
 
+    @catch_and_print_errors
     async def tune(self, disk_packed_tensors: "DiskPackedTensors") -> None:
         import torch
         from unsloth_zoo.training_utils import set_training, unset_training  # type: ignore
@@ -233,4 +263,4 @@ if __name__ == "__main__":
     app.post("/stop_openai_server")(service.stop_openai_server)
     app.post("/tune")(service.tune)
     set_vllm_log_file(f"{service.output_dir}/logs/vllm.log")
-    uvicorn.run(app, host=service.host, port=service.port)
+    uvicorn.run(app, host=service.host, port=service.port, loop="asyncio")
