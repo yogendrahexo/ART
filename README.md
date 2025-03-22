@@ -1,4 +1,4 @@
-![Screenshot 2025-03-21 at 10 12 58 PM](https://github.com/user-attachments/assets/d3be54fe-2b71-41cd-8281-39470a78797f)
+![Screenshot 2025-03-21 at 10 19 11 PM](https://github.com/user-attachments/assets/4ca0f1c4-a34f-45ad-a594-cd854e35a39d)
 
 # The OpenPipe Agent Reinforcement Trainer (ART)
 
