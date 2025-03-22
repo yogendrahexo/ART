@@ -1,4 +1,5 @@
-# OpenPipe Agent Reinforcement Training (ART)
+![Screenshot 2025-03-21 at 10 11 14 PM](https://github.com/user-attachments/assets/5510fc07-82d0-491c-9c47-284b4ad74a51)
+# The OpenPipe Agent Reinforcement Trainer (ART)
 
 An open-source reinforcement training library for LLMs and agentic workflows
 
