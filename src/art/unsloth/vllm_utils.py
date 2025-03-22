@@ -39,9 +39,10 @@ def openai_server_task(
     base_model: BaseModel,
     tool_use: bool,
     lora_path: str,
-) -> asyncio.Task:
+) -> asyncio.Task[None]:
     patch_get_lora_tokenizer_async()
     patch_listen_for_disconnect()
+    patch_multi_step_model_runner(model)
 
     @asynccontextmanager
     async def yield_async_engine_client(
@@ -59,7 +60,7 @@ def openai_server_task(
         cast(type[AsyncEngineArgs], dict)(
             disable_log_requests=True,
             model=base_model,
-            num_scheduler_steps=4,
+            num_scheduler_steps=16,
             served_model_name=base_model,
         ),
     )
@@ -115,6 +116,21 @@ def patch_listen_for_disconnect() -> None:
     import vllm.entrypoints.utils
 
     vllm.entrypoints.utils.listen_for_disconnect = patched_listen_for_disconnect
+
+
+def patch_multi_step_model_runner(model: PeftModel) -> None:
+    """
+    Patches the vLLM multi-step model runner to support LoRA adapters.
+    """
+    model_runner = model.vllm_engine.engine.model_executor.driver_worker.model_runner  # type: ignore
+    if not hasattr(model_runner, "_base_model_runner"):
+        return
+    base_model_runner = model_runner._base_model_runner
+    model_runner.set_active_loras = base_model_runner.set_active_loras
+    model_runner.add_lora = base_model_runner.add_lora
+    model_runner.remove_lora = base_model_runner.remove_lora
+    model_runner.pin_lora = base_model_runner.pin_lora
+    model_runner.list_loras = base_model_runner.list_loras
 
 
 def set_vllm_log_file(path: str) -> None:

@@ -1,5 +1,9 @@
 import asyncio
-from openai import AsyncOpenAI
+import httpx
+from openai import (
+    AsyncOpenAI,
+    DefaultAsyncHttpxClient,
+)
 import os
 from peft.peft_model import PeftModel
 from transformers import PreTrainedTokenizerBase
@@ -188,6 +192,12 @@ class UnslothAPI(API):
             AsyncOpenAI(
                 base_url=f"http://localhost:{service.port - 89}/v1",
                 api_key="default",
+                http_client=DefaultAsyncHttpxClient(
+                    timeout=httpx.Timeout(timeout=1200, connect=5.0),
+                    limits=httpx.Limits(
+                        max_connections=2048, max_keepalive_connections=2048
+                    ),
+                ),
             ),
             asyncio.Semaphore(
                 int(

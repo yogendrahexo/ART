@@ -65,6 +65,9 @@ class Service(BaseModel):
             tool_use=request.tool_use,
             lora_path=lora_path,
         )
+        done, _ = await asyncio.wait([self._openai_server_task], timeout=1.0)
+        for task in done:
+            task.result()
 
     async def stop_openai_server(self) -> None:
         if self._openai_server_task:
