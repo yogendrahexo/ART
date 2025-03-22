@@ -1,6 +1,6 @@
 from peft.peft_model import PeftModel
 from transformers import PreTrainedTokenizerBase
-from unsloth.models import FastLanguageModel
+from unsloth.models import FastLanguageModel  # type: ignore
 
 
 def get_model_and_tokenizer(
