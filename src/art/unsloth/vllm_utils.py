@@ -1,21 +1,25 @@
 from argparse import Namespace
 import asyncio
 from contextlib import asynccontextmanager
+from functools import partial
 import logging
+import multiprocessing
 import os
 from peft.peft_model import PeftModel
 import re
-from typing import AsyncIterator
+from typing import AsyncIterator, Coroutine, Any
 from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.engine.multiprocessing.client import MQLLMEngineClient
 from vllm.engine.protocol import EngineClient
 from vllm.entrypoints.openai import api_server
 from vllm.entrypoints.openai.cli_args import make_arg_parser, validate_parsed_serve_args
 from vllm.entrypoints.openai.serving_models import LoRARequest  # type: ignore
 from vllm.logger import _DATE_FORMAT, _FORMAT
-from vllm.utils import FlexibleArgumentParser
+from vllm.utils import get_open_zmq_ipc_path, FlexibleArgumentParser
 from typing import cast, Literal, TypedDict
 
 from .. import UVICORN_LOGGING_CONFIG_PATH
+from .async_multiprocessing_engine import MQAsyncLLMEngine
 from ..types import BaseModel
 
 
@@ -33,6 +37,90 @@ def max_concurrent_tokens(path: str) -> int:
         return int(int(matches[-1][0]) * float(matches[-1][1]))
 
 
+def openai_server_task2(
+    model: PeftModel,
+    model_name: str,
+    base_model: BaseModel,
+    tool_use: bool,
+    lora_path: str,
+) -> asyncio.Task[None]:
+    patch_get_lora_tokenizer_async()
+    patch_multi_step_model_runner(model)
+
+    # Select random path for IPC.
+    ipc_path = get_open_zmq_ipc_path()
+    print("Multiprocessing frontend to use %s for IPC Path.", ipc_path)
+
+    engine = MQAsyncLLMEngine(
+        ipc_path=ipc_path,
+        async_engine=model.vllm_engine,
+    )
+
+    # Start client in separate process (provides the OpenAI API server).
+    # the current process might have CUDA context,
+    # so maybe we need to spawn a new process
+    context = multiprocessing.get_context("spawn")
+
+    client_process = context.Process(
+        target=openai_server_target,
+        args=(ipc_path, os.getpid(), model_name, base_model, tool_use, lora_path),
+    )
+
+    async def openai_server_task() -> None:
+        engine_task = asyncio.create_task(engine.run())
+        try:
+            client_process.start()
+            await engine_task
+        finally:
+            engine_task.cancel()
+            client_process.terminate()
+
+    return asyncio.create_task(openai_server_task())
+
+
+def openai_server_target(
+    ipc_path: str,
+    engine_pid: int,
+    model_name: str,
+    base_model: BaseModel,
+    tool_use: bool,
+    lora_path: str,
+) -> None:
+    patch_listen_for_disconnect()
+
+    engine_args = AsyncEngineArgs(
+        model=base_model,
+        num_scheduler_steps=16,
+        served_model_name=base_model,
+    )
+
+    @asynccontextmanager
+    async def build_async_engine_client(
+        _: Namespace,
+    ) -> AsyncIterator[EngineClient]:
+        # Build RPCClient, which conforms to EngineClient Protocol.
+        engine_config = engine_args.create_engine_config()
+        build_client = partial(MQLLMEngineClient, ipc_path, engine_config, engine_pid)
+        mq_engine_client = await asyncio.get_running_loop().run_in_executor(
+            None, build_client
+        )
+        try:
+            while True:
+                try:
+                    await mq_engine_client.setup()
+                    break
+                except TimeoutError:
+                    pass
+
+            yield mq_engine_client  # type: ignore[misc]
+        finally:
+            # Close all open connections to the backend
+            mq_engine_client.close()
+
+    api_server.build_async_engine_client = build_async_engine_client
+    asyncio.run(_openai_server_coroutine(model_name, base_model, tool_use, lora_path))
+
+
 def openai_server_task(
     model: PeftModel,
     model_name: str,
@@ -45,12 +133,24 @@ def openai_server_task(
     patch_multi_step_model_runner(model)
 
     @asynccontextmanager
-    async def yield_async_engine_client(
+    async def build_async_engine_client(
         _: Namespace,
     ) -> AsyncIterator[EngineClient]:
         yield getattr(model, "vllm_engine")
 
-    api_server.build_async_engine_client = yield_async_engine_client
+    api_server.build_async_engine_client = build_async_engine_client
+
+    return asyncio.create_task(
+        _openai_server_coroutine(model_name, base_model, tool_use, lora_path)
+    )
+
+
+def _openai_server_coroutine(
+    model_name: str,
+    base_model: BaseModel,
+    tool_use: bool,
+    lora_path: str,
+) -> Coroutine[Any, Any, None]:
     parser = FlexibleArgumentParser(
         description="vLLM OpenAI-Compatible RESTful API server."
     )
@@ -83,9 +183,7 @@ def openai_server_task(
     ]
     namespace = parser.parse_args(args)
     validate_parsed_serve_args(namespace)
-    return asyncio.create_task(
-        api_server.run_server(namespace, log_config=UVICORN_LOGGING_CONFIG_PATH)
-    )
+    return api_server.run_server(namespace, log_config=UVICORN_LOGGING_CONFIG_PATH)
 
 
 def patch_get_lora_tokenizer_async() -> None:

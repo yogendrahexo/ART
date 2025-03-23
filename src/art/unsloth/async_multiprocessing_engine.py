@@ -189,7 +189,7 @@ class MQAsyncLLMEngine:
                     prompt_adapter_request=request.prompt_adapter_request,
                     priority=request.priority,
                 )
-                asyncio.create_task(self.consume_generator(generator))
+                await self.consume_generator(generator)
             elif isinstance(request, RPCAbortRequest):
                 await self.async_engine.abort(request.request_id)
                 logger.info(f"Aborted request {request.request_id}.")
