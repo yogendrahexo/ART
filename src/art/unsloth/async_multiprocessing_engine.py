@@ -159,7 +159,7 @@ class MQAsyncLLMEngine:
                 frames = await self.input_socket.recv_multipart()
                 request = pickle.loads(frames[0])
                 asyncio.create_task(self.handle_request(request))
-            await asyncio.sleep(0)  # Yield control to other tasks
+            await asyncio.sleep(0.001)  # Yield control to other tasks
 
     async def handle_request(
         self,
@@ -189,7 +189,7 @@ class MQAsyncLLMEngine:
                     prompt_adapter_request=request.prompt_adapter_request,
                     priority=request.priority,
                 )
-                await self.consume_generator(generator)
+                asyncio.create_task(self.consume_generator(generator))
             elif isinstance(request, RPCAbortRequest):
                 await self.async_engine.abort(request.request_id)
                 logger.info(f"Aborted request {request.request_id}.")
