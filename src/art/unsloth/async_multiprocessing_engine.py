@@ -234,7 +234,7 @@ class MQAsyncLLMEngine:
         """
         try:
             async for output in generator:
-                await self.send_output(output)
+                await self.send_output([output])
         except Exception as e:
             logger.exception(f"Error consuming generator: {e}")
             self._errored_with = e
@@ -242,8 +242,7 @@ class MQAsyncLLMEngine:
     async def send_output(
         self,
         output: (
-            RequestOutput
-            | PoolingRequestOutput[PoolingOutput]
+            list[RequestOutput | PoolingRequestOutput[PoolingOutput]]
             | RPCAdapterLoadedResponse
             | RPCError
         ),
