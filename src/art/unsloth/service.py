@@ -27,7 +27,7 @@ P = ParamSpec("P")
 
 
 def catch_and_print_errors(
-    func: Callable[P, Awaitable[T]]
+    func: Callable[P, Awaitable[T]],
 ) -> Callable[P, Awaitable[T]]:
     """
     Decorator that catches, prints, and reraises any errors that occur in the wrapped function.
@@ -115,8 +115,8 @@ class Service(BaseModel):
         packed_tensors = packed_tensors_from_dir(**disk_packed_tensors)
         queue = self._get_packed_tensors_queue()
         await queue.join()
-        peft_model, _ = self._get_model_and_tokenizer()
-        set_training(peft_model)
+        model, _ = self._get_model_and_tokenizer()
+        set_training(model)
         trainer = self._get_trainer()
         for i in range(packed_tensors["tokens"].shape[0]):
             queue.put_nowait(
@@ -141,14 +141,14 @@ class Service(BaseModel):
         iteration_dir = f"{self.output_dir}/{get_iteration(self.output_dir) + 1:04d}"
         trainer.save_model(iteration_dir)
         # Swap in the new lora
-        lora_request = peft_model.load_lora(
+        lora_request = model.load_lora(
             iteration_dir,
             load_tensors=True,
         )
         lora_request.lora_int_id = 1
         lora_request.lora_name = self.model_name
-        peft_model.vllm_engine.engine.remove_lora(1)
-        peft_model.vllm_engine.engine.add_lora(lora_request)
+        model.vllm_engine.engine.remove_all_loras()
+        model.vllm_engine.engine.add_lora(lora_request)
 
     async def serve(self) -> "Service":
         # Ensure logs directory exists

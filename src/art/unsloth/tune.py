@@ -63,9 +63,6 @@ async def train(
             # Move tensors to the correct device
             inputs = {key: tensor.to(trainer.accelerator.device) for key, tensor in inputs.items()}  # type: ignore
 
-            # Assume the first token in the batch is the bos token
-            bos_id = int(inputs["tokens"].view(-1)[0].item())
-
             # Create grouped causal mask
             batch_size, seq_len = inputs["tokens"].size()
             causal_mask = (
@@ -103,18 +100,33 @@ async def train(
                 device_type="cuda", dtype=trainer._autocast_dtype
             ):
                 logits = model(input_ids=inputs["tokens"], causal_mask=attn_bias).logits
+                logits = logits[:, :-1, :]
 
-            result = loss_fn.forward(
-                logits=logits,
-                tokens=inputs["tokens"],
-                advantages=inputs["advantages"],
-                logprobs=inputs["logprobs"],
-                reference_logprobs=None,
-                mask=inputs["assistant_mask"],
-                weights=inputs["weights"],
-                bos_id=bos_id,
+            selected_logits = (
+                torch.gather(
+                    logits, dim=-1, index=inputs["tokens"][:, 1:].unsqueeze(-1)
+                )
+                .squeeze(-1)
+                .to(torch.float32)
             )
-            return result.per_token().total_loss
+            del logits
+            mask = inputs["assistant_mask"][:, 1:]
+            new_logprobs = (selected_logits - torch.logsumexp(selected_logits, dim=-1))[
+                mask
+            ]
+            old_logprobs = inputs["logprobs"][:, 1:][mask]
+            old_logprobs = torch.where(
+                torch.isnan(old_logprobs), new_logprobs, old_logprobs
+            )
+            advantages = inputs["advantages"][:, 1:][mask]
+            diff = new_logprobs - old_logprobs
+            prob_ratio = torch.exp(diff)
+            policy_loss = -torch.min(
+                prob_ratio * advantages,
+                torch.clip(prob_ratio, 1 - 0.2, 1 + 0.2) * advantages,
+            )
+            del new_logprobs, old_logprobs, diff, prob_ratio, advantages
+            return policy_loss.mean()
         finally:
             for tensor in inputs.values():
                 tensor.to("cpu")  # type: ignore
