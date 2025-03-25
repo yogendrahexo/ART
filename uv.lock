@@ -172,7 +172,7 @@ wheels = [
 
 [[package]]
 name = "anthropic"
-version = "0.45.2"
+version = "0.49.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -183,9 +183,9 @@ dependencies = [
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/15/74/2b2485fc120da834c0c5be07462541ec082e9fa8851d845f2587e480535a/anthropic-0.45.2.tar.gz", hash = "sha256:32a18b9ecd12c91b2be4cae6ca2ab46a06937b5aa01b21308d97a6d29794fb5e", size = 200901 }
+sdist = { url = "https://files.pythonhosted.org/packages/86/e3/a88c8494ce4d1a88252b9e053607e885f9b14d0a32273d47b727cbee4228/anthropic-0.49.0.tar.gz", hash = "sha256:c09e885b0f674b9119b4f296d8508907f6cff0009bc20d5cf6b35936c40b4398", size = 210016 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/74/86/e81814e542d1eaeec84d2312bec93a99b9ef1d78d9bfae1fc5dd74abdf15/anthropic-0.45.2-py3-none-any.whl", hash = "sha256:ecd746f7274451dfcb7e1180571ead624c7e1195d1d46cb7c70143d2aedb4d35", size = 222797 },
+    { url = "https://files.pythonhosted.org/packages/76/74/5d90ad14d55fbe3f9c474fdcb6e34b4bed99e3be8efac98734a5ddce88c1/anthropic-0.49.0-py3-none-any.whl", hash = "sha256:bbc17ad4e7094988d2fa86b87753ded8dce12498f4b85fe5810f208f454a8375", size = 243368 },
 ]
 
 [[package]]
@@ -249,13 +249,13 @@ dev = [
 requires-dist = [
     { name = "bitsandbytes", marker = "sys_platform == 'linux'", specifier = ">=0.45.2" },
     { name = "matplotlib", specifier = ">=3.10.1" },
-    { name = "openai", specifier = ">=1.60.0" },
-    { name = "openpipe", specifier = ">=4.48.0" },
+    { name = "openai", specifier = ">=1.65.5" },
+    { name = "openpipe", specifier = ">=4.49.0" },
     { name = "peft", specifier = ">=0.14.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "torch", specifier = ">=2.5.1" },
     { name = "torchao", specifier = ">=0.9.0" },
-    { name = "torchtune", specifier = ">=0.5.0" },
+    { name = "torchtune", specifier = ">=0.6.0" },
     { name = "unsloth", marker = "sys_platform == 'linux'", git = "https://github.com/bradhilton/unsloth" },
     { name = "unsloth-zoo", marker = "sys_platform == 'linux'", git = "https://github.com/bradhilton/unsloth-zoo" },
     { name = "vllm", specifier = ">=0.7.0" },
@@ -2490,7 +2490,7 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "1.60.2"
+version = "1.65.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -2502,9 +2502,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/08/ae/8d9706b8ff2363287b4a8807de2dd29cdbdad5424e9d05d345df724320f5/openai-1.60.2.tar.gz", hash = "sha256:a8f843e10f2855713007f491d96afb2694b11b5e02cb97c7d01a0be60bc5bb51", size = 348185 }
+sdist = { url = "https://files.pythonhosted.org/packages/56/cf/e02fb2c5a834803e6f29f43fd3dfe010303282d1ea450a5b95e28608860a/openai-1.65.5.tar.gz", hash = "sha256:17d39096bbcaf6c86580244b493a59e16613460147f0ba5ab6e608cdb6628149", size = 359548 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/5a/d5474ca67a547dde9b87b5bc8a8f90eadf29f523d410f2ba23d63c9b82ec/openai-1.60.2-py3-none-any.whl", hash = "sha256:993bd11b96900b9098179c728026f016b4982ded7ee30dfcf4555eab1171fff9", size = 456107 },
+    { url = "https://files.pythonhosted.org/packages/fc/8f/a178d73277bf2d838617fa20ba4ae6952e26074664aacb53ae4532a69588/openai-1.65.5-py3-none-any.whl", hash = "sha256:5948a504e7b4003d921cfab81273813793a31c25b1d7b605797c01757e0141f1", size = 474468 },
 ]
 
 [[package]]
@@ -2549,7 +2549,7 @@ wheels = [
 
 [[package]]
 name = "openpipe"
-version = "4.48.0"
+version = "4.49.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anthropic" },
@@ -2558,9 +2558,9 @@ dependencies = [
     { name = "openai" },
     { name = "python-dateutil" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/52/5b/248b05c26c40ea41e3b571e75bf051c17861b2a5bda2cc69037efa497c89/openpipe-4.48.0.tar.gz", hash = "sha256:91c7893426ba65ca333417d20eb400fc718f9e6a626c92dc434d4a83ee8b9fc6", size = 79126 }
+sdist = { url = "https://files.pythonhosted.org/packages/4b/85/9a6f281ca7492f356d36ae313ceec2962afd5d3210eddddd0ecf2ea40365/openpipe-4.49.0.tar.gz", hash = "sha256:2e215489613b7db969d178192e9ac0a34afb7acf1d63912f5b37ae136dd4a89d", size = 95277 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0f/2e/b9b8d1d603132be39d19e8d293f04753e91348a9cd490285f930aeed47e8/openpipe-4.48.0-py3-none-any.whl", hash = "sha256:cdfcd6207ab48796783c4b627a4c78ac4ca3dc8ca3b9ac0592083ded7f4db32c", size = 308448 },
+    { url = "https://files.pythonhosted.org/packages/c4/5f/184252ba3c52e9a9c4ac9ecdb1c7d94f96dc9f3ae8998166934bf4a4272c/openpipe-4.49.0-py3-none-any.whl", hash = "sha256:b2258420af115ba588a6f4b9979e4bb46b7bfbfd4a834831626f29c1d04395f6", size = 438442 },
 ]
 
 [[package]]
@@ -4213,8 +4213,21 @@ wheels = [
 ]
 
 [[package]]
+name = "torchdata"
+version = "0.11.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "torch" },
+    { name = "urllib3" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/95/d4/af694ef718aedbe95a72760ab9ff7a6a7a44ace2d7f70c27bfeb67c5c503/torchdata-0.11.0-py3-none-any.whl", hash = "sha256:52b940fbbe0e00fb21cabddf528449d1bec5bfb0d0823b7487b15f951658ee33", size = 61968 },
+]
+
+[[package]]
 name = "torchtune"
-version = "0.5.0"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "blobfile" },
@@ -4228,10 +4241,12 @@ dependencies = [
     { name = "safetensors" },
     { name = "sentencepiece" },
     { name = "tiktoken" },
+    { name = "tokenizers" },
+    { name = "torchdata" },
     { name = "tqdm" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3e/75/76bc4f7d48da0ee3c29233df873883c463d6d9382fcaeb4fe6e859393a04/torchtune-0.5.0-py3-none-any.whl", hash = "sha256:4b16e6a0b97f1c50455510cbf869628f50f3c72147277af3b791718212ada25c", size = 810331 },
+    { url = "https://files.pythonhosted.org/packages/1d/a8/b12275f2b3a326a9e6426e98b87fc80c9bf947067fc4a9388a938b6401dd/torchtune-0.6.0-py3-none-any.whl", hash = "sha256:7ee65f826af35789e86c6aa15e7000be7c4c69d1555bdc6a274c4275bbded5c7", size = 910701 },
 ]
 
 [[package]]
