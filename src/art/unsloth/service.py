@@ -237,9 +237,9 @@ class Service(BaseModel):
                 optim="paged_adamw_8bit",
                 beta=0.0,
                 logging_steps=1,
-                per_device_train_batch_size=5,
-                gradient_accumulation_steps=8,  # Increase to 4 for smoother training
-                num_generations=5,  # Decrease if out of memory
+                per_device_train_batch_size=1,
+                gradient_accumulation_steps=1,  # Increase to 4 for smoother training
+                num_generations=1,  # Decrease if out of memory
                 max_prompt_length=2048,
                 max_completion_length=8192 - 2048,
                 # num_train_epochs = 1, # Set to 1 for a full training run
