@@ -83,8 +83,9 @@ class Service(BaseModel):
         peft_model, _ = self._get_model_and_tokenizer()
         lora_path = get_last_iteration_dir(self.output_dir)
         if lora_path is None:
+            trainer = self._get_trainer()
             lora_path = f"{self.output_dir}/0000"
-            peft_model.save_lora(lora_path)
+            trainer.save_model(lora_path)
         await self.stop_openai_server()
         self._openai_server_task = openai_server_task(
             model=peft_model,
@@ -116,6 +117,7 @@ class Service(BaseModel):
         await queue.join()
         peft_model, _ = self._get_model_and_tokenizer()
         set_training(peft_model)
+        trainer = self._get_trainer()
         for i in range(packed_tensors["tokens"].shape[0]):
             queue.put_nowait(
                 PackedTensors(
@@ -127,17 +129,17 @@ class Service(BaseModel):
                 )
             )
         if self._train_task is None:
-            self._train_task = asyncio.create_task(train(self._get_trainer(), queue))
+            self._train_task = asyncio.create_task(train(trainer, queue))
         (done,), _ = await asyncio.wait(
             [self._train_task, asyncio.create_task(queue.join())],
             return_when=asyncio.FIRST_COMPLETED,
         )
-        unset_training(peft_model)
+        # unset_training(peft_model)
         if exception := done.exception():
             raise exception
         # Save the new lora
         iteration_dir = f"{self.output_dir}/{get_iteration(self.output_dir) + 1:04d}"
-        peft_model.save_lora(iteration_dir)
+        trainer.save_model(iteration_dir)
         # Swap in the new lora
         lora_request = peft_model.load_lora(
             iteration_dir,
