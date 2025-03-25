@@ -147,7 +147,7 @@ class Service(BaseModel):
         )
         lora_request.lora_int_id = 1
         lora_request.lora_name = self.model_name
-        model.vllm_engine.engine.remove_all_loras()
+        model.vllm_engine.engine.remove_lora(1)
         model.vllm_engine.engine.add_lora(lora_request)
 
     async def serve(self) -> "Service":
@@ -237,14 +237,14 @@ class Service(BaseModel):
                 optim="paged_adamw_8bit",
                 beta=0.0,
                 logging_steps=1,
-                per_device_train_batch_size=1,
+                per_device_train_batch_size=4,
                 gradient_accumulation_steps=1,  # Increase to 4 for smoother training
-                num_generations=1,  # Decrease if out of memory
+                num_generations=4,  # Decrease if out of memory
                 max_prompt_length=2048,
                 max_completion_length=8192 - 2048,
                 # num_train_epochs = 1, # Set to 1 for a full training run
-                max_steps=250,
-                save_steps=250,
+                max_steps=1_000_000,
+                save_steps=1_000_000,
                 max_grad_norm=10.0,
                 report_to="none",  # Can use Weights & Biases
                 output_dir="outputs",

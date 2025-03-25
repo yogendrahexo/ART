@@ -102,18 +102,18 @@ async def train(
                 logits = model(input_ids=inputs["tokens"], causal_mask=attn_bias).logits
                 logits = logits[:, :-1, :]
 
+            mask = inputs["assistant_mask"][:, 1:]
+            logits = logits[mask]
+
             selected_logits = (
                 torch.gather(
-                    logits, dim=-1, index=inputs["tokens"][:, 1:].unsqueeze(-1)
+                    logits, dim=-1, index=inputs["tokens"][:, 1:][mask].unsqueeze(-1)
                 )
                 .squeeze(-1)
                 .to(torch.float32)
             )
+            new_logprobs = selected_logits - torch.logsumexp(logits, dim=-1)
             del logits
-            mask = inputs["assistant_mask"][:, 1:]
-            new_logprobs = (selected_logits - torch.logsumexp(selected_logits, dim=-1))[
-                mask
-            ]
             old_logprobs = inputs["logprobs"][:, 1:][mask]
             old_logprobs = torch.where(
                 torch.isnan(old_logprobs), new_logprobs, old_logprobs
