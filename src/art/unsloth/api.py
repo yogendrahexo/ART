@@ -25,10 +25,9 @@ from .pack import (
     PackedTensors,
     plot_packed_tensors,
 )
-from .model import get_model_and_tokenizer
 from .service import Service, StartOpenaiServer
 from .tokenization import tokenize_trajectory_groups
-from .tune import (
+from .checkpoints import (
     clear_iteration_dirs,
     get_iteration,
 )
@@ -65,10 +64,6 @@ class UnslothAPI(API):
         self._wandb_project = wandb_project
 
         # Other initialization
-        self._model_and_tokenizer: tuple[PeftModel, PreTrainedTokenizerBase] | None = (
-            None
-        )
-        self._openai_server_task: asyncio.Task | None = None
         self._services: dict[str, Service] = {}
         self._tokenizers: dict[str, "PreTrainedTokenizerBase"] = {}
         self._wandb_runs: dict[str, Run] = {}
