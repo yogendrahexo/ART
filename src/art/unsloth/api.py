@@ -5,7 +5,6 @@ from openai import (
     DefaultAsyncHttpxClient,
 )
 import os
-from peft.peft_model import PeftModel
 from transformers import PreTrainedTokenizerBase
 from typing import cast
 import wandb
