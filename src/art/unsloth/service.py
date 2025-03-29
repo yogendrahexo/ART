@@ -5,12 +5,13 @@ import torch
 import traceback
 from typing import Awaitable, Callable, cast, ParamSpec, TYPE_CHECKING, TypeVar
 
-from art import types
-from art.unsloth.checkpoints import get_iteration, get_last_iteration_dir
-from art.unsloth.model import get_model_and_tokenizer
-from art.unsloth.pack import DiskPackedTensors, packed_tensors_from_dir, PackedTensors
-from art.unsloth.train import get_trainer, train
-from art.unsloth.vllm import openai_server_task, set_vllm_log_file
+from .. import types
+from .checkpoints import get_iteration, get_last_iteration_dir
+from .config import ModelConfig
+from .model import get_model_and_tokenizer
+from .pack import DiskPackedTensors, packed_tensors_from_dir, PackedTensors
+from .train import get_trainer, train
+from .vllm import openai_server_task
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -54,6 +55,7 @@ class ModelService(BaseModel):
     port: int
     model_name: str
     base_model: "types.BaseModel"
+    config: ModelConfig
     output_dir: str
     process: asyncio.subprocess.Process | None = None
     _openai_server_task: asyncio.Task | None = None

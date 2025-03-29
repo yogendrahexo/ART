@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 from ..api import API
 from ..model import Model
-from .model_service import ModelService, StartOpenaiServer
+from .service import ModelService, StartOpenaiServer
 from ..types import BaseModel, Message, Trajectory, TuneConfig, Verbosity
 from ..utils import format_message
 from .pack import (

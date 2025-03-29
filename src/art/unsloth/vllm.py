@@ -5,7 +5,6 @@ from functools import partial
 import logging
 import multiprocessing
 import os
-from peft.peft_model import PeftModel
 import re
 from typing import AsyncIterator, Coroutine, Any
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -16,12 +15,14 @@ from vllm.entrypoints.openai.cli_args import make_arg_parser, validate_parsed_se
 from vllm.entrypoints.openai.serving_models import LoRARequest  # type: ignore
 from vllm.logger import _DATE_FORMAT, _FORMAT
 from vllm.utils import get_open_zmq_ipc_path, FlexibleArgumentParser
-from typing import cast, Literal, TypedDict
+from typing import cast, Literal, TYPE_CHECKING, TypedDict
 
 from .. import UVICORN_LOGGING_CONFIG_PATH
 from .async_multiprocessing_engine import MQAsyncLLMEngine
 from ..types import BaseModel
 
+if TYPE_CHECKING:
+    from peft.peft_model import PeftModel
 
 # Unsloth expects these attributes to be present
 LoRARequest.lora_tensors = {}  # type: ignore
@@ -38,7 +39,7 @@ def max_concurrent_tokens(path: str) -> int:
 
 
 def openai_server_task2(
-    model: PeftModel,
+    model: "PeftModel",
     model_name: str,
     base_model: BaseModel,
     tool_use: bool,
@@ -216,7 +217,7 @@ def patch_listen_for_disconnect() -> None:
     vllm.entrypoints.utils.listen_for_disconnect = patched_listen_for_disconnect
 
 
-def patch_multi_step_model_runner(model: PeftModel) -> None:
+def patch_multi_step_model_runner(model: "PeftModel") -> None:
     """
     Patches the vLLM multi-step model runner to support LoRA adapters.
     """
