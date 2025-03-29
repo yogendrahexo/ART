@@ -1,10 +1,11 @@
 import asyncio
 import httpx
+from mp_actors import move_to_child_process
+import numpy as np
 from openai import (
     AsyncOpenAI,
     DefaultAsyncHttpxClient,
 )
-import numpy as np
 import os
 from typing import cast
 import wandb
@@ -13,7 +14,7 @@ from typing import TYPE_CHECKING
 
 from ..api import API
 from ..model import Model
-from ..model_service import ModelService, StartOpenaiServer
+from .model_service import ModelService, StartOpenaiServer
 from ..types import BaseModel, Message, Trajectory, TuneConfig, Verbosity
 from ..utils import format_message
 from .pack import (
@@ -92,7 +93,9 @@ class UnslothAPI(API):
                 output_dir=self._get_output_dir(model.name),
             )
             if not self._in_process:
-                await self._services[model.name].serve()
+                self._services[model.name] = move_to_child_process(
+                    self._services[model.name]
+                )
         return self._services[model.name]
 
     def _get_packed_tensors(

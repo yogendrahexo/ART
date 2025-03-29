@@ -7,6 +7,9 @@ import uuid
 
 from .traceback import streamline_tracebacks
 
+if mp.get_start_method(allow_none=True) != "spawn":
+    mp.set_start_method("spawn", force=True)
+
 nest_asyncio.apply()
 
 
