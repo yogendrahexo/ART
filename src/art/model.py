@@ -1,10 +1,13 @@
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, _AsyncGeneratorContextManager
 from dataclasses import dataclass
 from openai import AsyncOpenAI
 from typing import AsyncGenerator, Iterable, TYPE_CHECKING
 
+from .config.model import ModelConfig
+from .config.openai_server import OpenAIServerConfig
 from .openai import patch_openai
 from .types import BaseModel, Trajectory, TuneConfig, Verbosity
+
 
 if TYPE_CHECKING:
     from .api import API
@@ -15,14 +18,14 @@ class Model:
     api: "API"
     name: str
     base_model: BaseModel
+    _config: ModelConfig | None = None
 
-    @asynccontextmanager
-    async def openai_client(
+    def openai_client(
         self,
         estimated_completion_tokens: int = 1024,
         tool_use: bool = False,
         verbosity: Verbosity = 1,
-    ) -> AsyncGenerator[AsyncOpenAI, None]:
+    ) -> _AsyncGeneratorContextManager[AsyncOpenAI]:
         """
         Context manager for an OpenAI client to a managed inference service.
 
@@ -41,8 +44,20 @@ class Model:
                     messages=[{"role": "user", "content": "Hello, world!"}],
                 )
         """
+        return self._openai_client(
+            estimated_completion_tokens, tool_use, verbosity, config=None
+        )
+
+    @asynccontextmanager
+    async def _openai_client(
+        self,
+        estimated_completion_tokens: int = 1024,
+        tool_use: bool = False,
+        verbosity: Verbosity = 1,
+        config: OpenAIServerConfig | None = None,
+    ) -> AsyncGenerator[AsyncOpenAI, None]:
         client, semaphore = await self.api._get_openai_client(
-            self, estimated_completion_tokens, tool_use, verbosity
+            self, estimated_completion_tokens, tool_use, verbosity, config
         )
         try:
             yield patch_openai(client, semaphore)

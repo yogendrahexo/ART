@@ -7,7 +7,8 @@ from typing import Awaitable, Callable, cast, ParamSpec, TYPE_CHECKING, TypeVar
 
 from .. import types
 from .checkpoints import get_iteration, get_last_iteration_dir
-from .config import ModelConfig
+from ..config.model import ModelConfig
+from ..config.openai_server import get_openai_server_config, OpenAIServerConfig
 from .model import get_model_and_tokenizer
 from .pack import DiskPackedTensors, packed_tensors_from_dir, PackedTensors
 from .train import get_trainer, train
@@ -54,19 +55,21 @@ class ModelService(BaseModel):
     host: str
     port: int
     model_name: str
-    base_model: "types.BaseModel"
+    base_model: types.BaseModel
     config: ModelConfig
     output_dir: str
     process: asyncio.subprocess.Process | None = None
-    _openai_server_task: asyncio.Task | None = None
-    _train_task: asyncio.Task | None = None
+    _openai_server_task: asyncio.Task[None] | None = None
+    _train_task: asyncio.Task[None] | None = None
 
     class Config:
         arbitrary_types_allowed = True
         extra = "allow"
 
     @catch_and_print_errors
-    async def start_openai_server(self, request: StartOpenaiServer) -> None:
+    async def start_openai_server(
+        self, tool_use: bool, config: OpenAIServerConfig | None
+    ) -> None:
         peft_model, _ = self.model_and_tokenizer
         lora_path = get_last_iteration_dir(self.output_dir)
         if lora_path is None:
@@ -75,10 +78,13 @@ class ModelService(BaseModel):
         await self.stop_openai_server()
         self._openai_server_task = openai_server_task(
             model=peft_model,
-            model_name=self.model_name,
-            base_model=self.base_model,
-            tool_use=request.tool_use,
-            lora_path=lora_path,
+            config=get_openai_server_config(
+                model_name=self.model_name,
+                base_model=self.base_model,
+                tool_use=tool_use,
+                lora_path=lora_path,
+                config=config,
+            ),
         )
         done, _ = await asyncio.wait([self._openai_server_task], timeout=1.0)
         for task in done:
@@ -136,7 +142,7 @@ class ModelService(BaseModel):
 
     @functools.cached_property
     def model_and_tokenizer(self) -> tuple["PeftModel", "PreTrainedTokenizerBase"]:
-        return get_model_and_tokenizer(self.base_model)
+        return get_model_and_tokenizer(self.config)
 
     @functools.cached_property
     def inputs_queue(self) -> asyncio.Queue[TuneInputs]:
@@ -151,25 +157,7 @@ class ModelService(BaseModel):
         self._trainer = get_trainer(
             model=peft_model,
             tokenizer=tokenizer,
-            args=GRPOConfig(
-                learning_rate=5e-6,
-                adam_beta1=0.9,
-                adam_beta2=0.99,
-                weight_decay=0.1,
-                lr_scheduler_type="constant",
-                optim="paged_adamw_8bit",
-                beta=0.0,
-                logging_steps=1,
-                per_device_train_batch_size=4,
-                gradient_accumulation_steps=1,  # Increase to 4 for smoother training
-                num_generations=4,  # Decrease if out of memory
-                save_strategy="no",
-                # max_steps=1_000_000,
-                # save_steps=1_000_000,
-                # max_grad_norm=10.0,
-                # report_to="none",  # Can use Weights & Biases
-                output_dir=self.output_dir,
-            ),
+            args=self.config.train_args or GRPOConfig(),
             inputs_queue=self.inputs_queue,
         )
         return self._trainer

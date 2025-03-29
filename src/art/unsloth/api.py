@@ -13,6 +13,8 @@ from wandb.sdk.wandb_run import Run
 from typing import TYPE_CHECKING
 
 from ..api import API
+from ..config.model import get_model_config, ModelConfig
+from ..config.openai_server import OpenAIServerConfig
 from ..model import Model
 from .service import ModelService, StartOpenaiServer
 from ..types import BaseModel, Message, Trajectory, TuneConfig, Verbosity
@@ -80,8 +82,13 @@ class UnslothAPI(API):
         Returns:
             Model: A model instance.
         """
+        return await self._get_or_create_model(name, base_model, None)
+
+    async def _get_or_create_model(
+        self, name: str, base_model: BaseModel, config: ModelConfig | None
+    ) -> Model:
         os.makedirs(self._get_output_dir(name), exist_ok=True)
-        return Model(api=self, name=name, base_model=base_model)
+        return Model(api=self, name=name, base_model=base_model, _config=config)
 
     async def _get_service(self, model: Model) -> ModelService:
         if model.name not in self._services:
@@ -90,6 +97,11 @@ class UnslothAPI(API):
                 port=8089 + len(self._services),
                 model_name=model.name,
                 base_model=model.base_model,
+                config=get_model_config(
+                    base_model=model.base_model,
+                    output_dir=self._get_output_dir(model.name),
+                    config=model._config,
+                ),
                 output_dir=self._get_output_dir(model.name),
             )
             if not self._in_process:
@@ -187,9 +199,10 @@ class UnslothAPI(API):
         estimated_completion_tokens: int,
         tool_use: bool,
         verbosity: Verbosity,
+        config: OpenAIServerConfig | None,
     ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
         service = await self._get_service(model)
-        await service.start_openai_server(StartOpenaiServer(tool_use=tool_use))
+        await service.start_openai_server(tool_use=tool_use, config=config)
         return (
             AsyncOpenAI(
                 base_url=f"http://localhost:{service.port - 89}/v1",
