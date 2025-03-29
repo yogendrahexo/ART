@@ -131,7 +131,7 @@ class LocalAPI(API):
                 gpu_memory_utilization=0.95,
                 max_num_seqs=2048,
                 max_num_batched_tokens=16384,
-                num_scheduler_steps=8,
+                num_scheduler_steps=1,
                 preemption_mode="swap",
                 return_tokens_as_token_ids=True,
                 swap_space=80,
@@ -166,7 +166,7 @@ class LocalAPI(API):
     async def _close_openai_client(self, client: AsyncOpenAI) -> None:
         await client.close()
         if self._vllm:
-            self._vllm.process.terminate()
+            self._vllm.process.kill()
             kill_vllm_workers()
 
     async def _log(
