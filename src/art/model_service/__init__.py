@@ -29,7 +29,7 @@ P = ParamSpec("P")
 if TYPE_CHECKING:
     from peft.peft_model import PeftModel
     from transformers import PreTrainedTokenizerBase
-    from trl import GRPOConfig, GRPOTrainer
+    from trl import GRPOTrainer
 
 
 def catch_and_print_errors(

@@ -5,6 +5,8 @@ import nest_asyncio
 from typing import Any, cast, TypeVar
 import uuid
 
+from .traceback import streamline_tracebacks
+
 nest_asyncio.apply()
 
 
@@ -67,6 +69,7 @@ class Proxy:
             else:
                 future.set_result(response.result)
 
+    @streamline_tracebacks()
     def __getattr__(self, name: str) -> Any:
         # For attributes that aren't methods, get them directly
         if not hasattr(self._obj, name):
@@ -84,12 +87,14 @@ class Proxy:
         attr = getattr(self._obj, name)
         if asyncio.iscoroutinefunction(attr):
             # Return an async wrapper function
+            @streamline_tracebacks()
             async def async_method_wrapper(*args: Any, **kwargs: Any) -> Any:
                 return await get_response(args, kwargs)
 
             return async_method_wrapper
         elif callable(attr):
             # Return a regular function wrapper
+            @streamline_tracebacks()
             def method_wrapper(*args: Any, **kwargs: Any) -> Any:
                 return asyncio.run(get_response(args, kwargs))
 
@@ -132,5 +137,8 @@ async def _handle_request(obj: object, request: Request, responses: mp.Queue) ->
             result = result_or_callable
         response = Response(request.id, result, None)
     except Exception as e:
+        from tblib import pickling_support
+
+        pickling_support.install(e)
         response = Response(request.id, None, e)
     responses.put_nowait(response)
