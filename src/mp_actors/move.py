@@ -2,7 +2,10 @@ import asyncio
 from dataclasses import dataclass
 import multiprocessing as mp
 import nest_asyncio
-from typing import Any, cast, TypeVar
+import os
+import sys
+from tblib import pickling_support
+from typing import Any, cast, TypeVar, Optional
 import uuid
 
 from .traceback import streamline_tracebacks
@@ -16,7 +19,7 @@ nest_asyncio.apply()
 T = TypeVar("T")
 
 
-def move_to_child_process(obj: T) -> T:
+def move_to_child_process(obj: T, log_file: Optional[str] = None) -> T:
     """
     Move an object to a child process and return a proxy to it.
 
@@ -26,12 +29,14 @@ def move_to_child_process(obj: T) -> T:
 
     Args:
         obj: The object to move to a child process.
+        log_file: Optional path to a file where stdout/stderr from the child process
+                 will be redirected. If None, output goes to the parent process.
 
     Returns:
         A proxy object that forwards method calls to the original object in the child process.
         The proxy has the same interface as the original object.
     """
-    return cast(T, Proxy(obj))
+    return cast(T, Proxy(obj, log_file))
 
 
 @dataclass
@@ -50,12 +55,12 @@ class Response:
 
 
 class Proxy:
-    def __init__(self, obj: object) -> None:
+    def __init__(self, obj: object, log_file: Optional[str] = None) -> None:
         self._obj = obj
         self._requests = mp.Queue()
         self._responses = mp.Queue()
         self._process = mp.Process(
-            target=_target, args=(obj, self._requests, self._responses)
+            target=_target, args=(obj, self._requests, self._responses, log_file)
         )
         self._process.start()
         self._futures: dict[str, asyncio.Future] = {}
@@ -113,7 +118,12 @@ class Proxy:
         self._requests.close()
 
 
-def _target(obj: object, requests: mp.Queue, responses: mp.Queue) -> None:
+def _target(
+    obj: object, requests: mp.Queue, responses: mp.Queue, log_file: Optional[str] = None
+) -> None:
+    if log_file:
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        sys.stdout = sys.stderr = open(log_file, "a", buffering=1)
     asyncio.run(_handle_requests(obj, requests, responses))
 
 
@@ -140,8 +150,6 @@ async def _handle_request(obj: object, request: Request, responses: mp.Queue) ->
             result = result_or_callable
         response = Response(request.id, result, None)
     except Exception as e:
-        from tblib import pickling_support
-
         pickling_support.install(e)
         response = Response(request.id, None, e)
     responses.put_nowait(response)
