@@ -6,14 +6,10 @@ from openai import (
 )
 import numpy as np
 import os
-from transformers import PreTrainedTokenizerBase
 from typing import cast
 import wandb
 from wandb.sdk.wandb_run import Run
 from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizerBase
 
 from ..api import API
 from ..model import Model
@@ -26,12 +22,15 @@ from .pack import (
     PackedTensors,
     plot_packed_tensors,
 )
-from .tokenization import tokenize_trajectory_groups
+from .tokenize import tokenize_trajectory_groups
 from .checkpoints import (
     clear_iteration_dirs,
     get_iteration,
 )
 from .vllm import max_concurrent_tokens
+
+if TYPE_CHECKING:
+    from transformers import PreTrainedTokenizerBase
 
 
 class UnslothAPI(API):

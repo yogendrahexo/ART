@@ -8,16 +8,13 @@ import httpx
 from fastapi import FastAPI
 import functools
 import os
-from peft.peft_model import PeftModel
 from pydantic import BaseModel
 import signal
 import sys
 import torch
 import traceback
-from transformers import PreTrainedTokenizerBase
 import uvicorn
-from trl import GRPOConfig, GRPOTrainer
-from typing import Awaitable, Callable, cast, ParamSpec, TypeVar
+from typing import Awaitable, Callable, cast, ParamSpec, TYPE_CHECKING, TypeVar
 
 from art import types
 from art.unsloth.checkpoints import get_iteration, get_last_iteration_dir
@@ -28,6 +25,11 @@ from art.unsloth.vllm import openai_server_task, set_vllm_log_file
 
 T = TypeVar("T")
 P = ParamSpec("P")
+
+if TYPE_CHECKING:
+    from peft.peft_model import PeftModel
+    from transformers import PreTrainedTokenizerBase
+    from trl import GRPOConfig, GRPOTrainer
 
 
 def catch_and_print_errors(
@@ -233,7 +235,9 @@ class ModelService(BaseModel):
         return asyncio.Queue()
 
     @functools.cached_property
-    def trainer(self) -> GRPOTrainer:
+    def trainer(self) -> "GRPOTrainer":
+        from trl import GRPOConfig
+
         peft_model, tokenizer = self.model_and_tokenizer
         self._trainer = get_trainer(
             model=peft_model,

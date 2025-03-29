@@ -2,7 +2,6 @@ import asyncio
 from openai import AsyncOpenAI
 import os
 import torch
-from transformers import AutoTokenizer
 from typing import cast
 import wandb
 from wandb.sdk.wandb_run import Run
@@ -234,6 +233,8 @@ class LocalAPI(API):
         trajectory_groups: list[list[Trajectory | BaseException]],
         config: TuneConfig,
     ) -> None:
+        from transformers import AutoTokenizer
+
         await self._log(model, trajectory_groups, "train")
         tokenizer = AutoTokenizer.from_pretrained(model.base_model)
         tokenized_results = list(

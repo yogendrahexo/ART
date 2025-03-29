@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import Dataset
 from typing import TypedDict, Unpack
 
-from .tokenization import TokenizedResult
+from .tokenize import TokenizedResult
 from ..types import Verbosity
 
 

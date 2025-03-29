@@ -2,27 +2,29 @@ import asyncio
 from datasets import Dataset
 import nest_asyncio
 import os
-from peft.peft_model import PeftModel
+
 import torch
-from transformers import PreTrainedTokenizerBase
-from trl import GRPOConfig, GRPOTrainer
 from typing import cast, TYPE_CHECKING
 
-from .grpo import GRPO
 from ..types import TuneConfig
 
 if TYPE_CHECKING:
+    from peft.peft_model import PeftModel
+    from transformers import PreTrainedTokenizerBase
+    from trl import GRPOConfig, GRPOTrainer
     from ..model_service import TuneInputs
 
 nest_asyncio.apply()
 
 
 def get_trainer(
-    model: PeftModel,
-    tokenizer: PreTrainedTokenizerBase,
-    args: GRPOConfig,
+    model: "PeftModel",
+    tokenizer: "PreTrainedTokenizerBase",
+    args: "GRPOConfig",
     inputs_queue: asyncio.Queue["TuneInputs"],
-) -> GRPOTrainer:
+) -> "GRPOTrainer":
+    from trl import GRPOTrainer
+
     trainer = GRPOTrainer(
         model=model,  # type: ignore
         reward_funcs=[],
@@ -44,7 +46,7 @@ def get_trainer(
 
 
 async def train(
-    trainer: GRPOTrainer, inputs_queue: asyncio.Queue["TuneInputs"]
+    trainer: "GRPOTrainer", inputs_queue: asyncio.Queue["TuneInputs"]
 ) -> None:
     # loss_fn = GRPO()
     # loss_fn._forward_chunk = torch.compile(
@@ -53,7 +55,7 @@ async def train(
     # )
 
     def compute_loss(
-        model: PeftModel,
+        model: "PeftModel",
         inputs: "TuneInputs",
         return_outputs: bool = False,
         num_items_in_batch: int | None = None,

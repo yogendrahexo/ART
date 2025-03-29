@@ -1,0 +1,136 @@
+import asyncio
+from dataclasses import dataclass
+import multiprocessing as mp
+import nest_asyncio
+from typing import Any, cast, TypeVar
+import uuid
+
+nest_asyncio.apply()
+
+
+T = TypeVar("T")
+
+
+def move_to_child_process(obj: T) -> T:
+    """
+    Move an object to a child process and return a proxy to it.
+
+    This function creates a proxy object that runs in a separate process. Method calls
+    on the proxy are forwarded to a pickled copy of the original object in the child
+    process.
+
+    Args:
+        obj: The object to move to a child process.
+
+    Returns:
+        A proxy object that forwards method calls to the original object in the child process.
+        The proxy has the same interface as the original object.
+    """
+    return cast(T, Proxy(obj))
+
+
+@dataclass
+class Request:
+    id: str
+    method_name: str
+    args: tuple[Any, ...]
+    kwargs: dict[str, Any]
+
+
+@dataclass
+class Response:
+    id: str
+    result: Any
+    exception: Exception | None
+
+
+class Proxy:
+    def __init__(self, obj: object) -> None:
+        self._obj = obj
+        self._requests = mp.Queue()
+        self._responses = mp.Queue()
+        self._process = mp.Process(
+            target=_target, args=(obj, self._requests, self._responses)
+        )
+        self._process.start()
+        self._futures: dict[str, asyncio.Future] = {}
+        self._handle_responses_task = asyncio.create_task(self._handle_responses())
+
+    async def _handle_responses(self) -> None:
+        while True:
+            response: Response = await asyncio.get_event_loop().run_in_executor(
+                None, self._responses.get
+            )
+            future = self._futures.pop(response.id)
+            if response.exception:
+                future.set_exception(response.exception)
+            else:
+                future.set_result(response.result)
+
+    def __getattr__(self, name: str) -> Any:
+        # For attributes that aren't methods, get them directly
+        if not hasattr(self._obj, name):
+            raise AttributeError(
+                f"{type(self._obj).__name__} has no attribute '{name}'"
+            )
+
+        async def get_response(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
+            request = Request(str(uuid.uuid4()), name, args, kwargs)
+            self._futures[request.id] = asyncio.Future()
+            self._requests.put_nowait(request)
+            return await self._futures[request.id]
+
+        # Check if it's a method or property
+        attr = getattr(self._obj, name)
+        if asyncio.iscoroutinefunction(attr):
+            # Return an async wrapper function
+            async def async_method_wrapper(*args: Any, **kwargs: Any) -> Any:
+                return await get_response(args, kwargs)
+
+            return async_method_wrapper
+        elif callable(attr):
+            # Return a regular function wrapper
+            def method_wrapper(*args: Any, **kwargs: Any) -> Any:
+                return asyncio.run(get_response(args, kwargs))
+
+            return method_wrapper
+        else:
+            # For non-callable attributes, get them directly
+            return asyncio.run(get_response(tuple(), dict()))
+
+    def __del__(self) -> None:
+        self._handle_responses_task.cancel()
+        self._process.terminate()
+        self._responses.close()
+        self._requests.close()
+
+
+def _target(obj: object, requests: mp.Queue, responses: mp.Queue) -> None:
+    asyncio.run(_handle_requests(obj, requests, responses))
+
+
+async def _handle_requests(
+    obj: object, requests: mp.Queue, responses: mp.Queue
+) -> None:
+    while True:
+        request: Request = await asyncio.get_event_loop().run_in_executor(
+            None, requests.get
+        )
+        asyncio.create_task(_handle_request(obj, request, responses))
+
+
+async def _handle_request(obj: object, request: Request, responses: mp.Queue) -> None:
+    try:
+        result_or_callable = getattr(obj, request.method_name)
+        if callable(result_or_callable):
+            result_or_coro = result_or_callable(*request.args, **request.kwargs)
+            if asyncio.iscoroutine(result_or_coro):
+                result = await result_or_coro
+            else:
+                result = result_or_coro
+        else:
+            result = result_or_callable
+        response = Response(request.id, result, None)
+    except Exception as e:
+        response = Response(request.id, None, e)
+    responses.put_nowait(response)
