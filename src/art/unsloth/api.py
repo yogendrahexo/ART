@@ -4,6 +4,7 @@ from openai import (
     AsyncOpenAI,
     DefaultAsyncHttpxClient,
 )
+import numpy as np
 import os
 from transformers import PreTrainedTokenizerBase
 from typing import cast
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
 
 from ..api import API
 from ..model import Model
+from ..model_service import ModelService, StartOpenaiServer
 from ..types import BaseModel, Message, Trajectory, TuneConfig, Verbosity
 from ..utils import format_message
 from .pack import (
@@ -24,13 +26,12 @@ from .pack import (
     PackedTensors,
     plot_packed_tensors,
 )
-from .service import Service, StartOpenaiServer
 from .tokenization import tokenize_trajectory_groups
 from .checkpoints import (
     clear_iteration_dirs,
     get_iteration,
 )
-from .vllm_utils import max_concurrent_tokens
+from .vllm import max_concurrent_tokens
 
 
 class UnslothAPI(API):
@@ -63,7 +64,7 @@ class UnslothAPI(API):
         self._wandb_project = wandb_project
 
         # Other initialization
-        self._services: dict[str, Service] = {}
+        self._services: dict[str, ModelService] = {}
         self._tokenizers: dict[str, "PreTrainedTokenizerBase"] = {}
         self._wandb_runs: dict[str, Run] = {}
 
@@ -82,9 +83,9 @@ class UnslothAPI(API):
         os.makedirs(self._get_output_dir(name), exist_ok=True)
         return Model(api=self, name=name, base_model=base_model)
 
-    async def _get_service(self, model: Model) -> Service:
+    async def _get_service(self, model: Model) -> ModelService:
         if model.name not in self._services:
-            self._services[model.name] = Service(
+            self._services[model.name] = ModelService(
                 host="localhost",
                 port=8089 + len(self._services),
                 model_name=model.name,
@@ -102,7 +103,7 @@ class UnslothAPI(API):
         sequence_length: int,
         verbosity: Verbosity,
         plot_tensors: bool,
-    ) -> PackedTensors:
+    ) -> PackedTensors | None:
         from transformers import AutoTokenizer
 
         if not model.base_model in self._tokenizers:
@@ -125,6 +126,11 @@ class UnslothAPI(API):
             pad_token_id=tokenizer.eos_token_id,  # type: ignore
             verbosity=verbosity,
         )
+        # If all logprobs are NaN then there is no suitable data for tuning
+        if np.isnan(packed_tensors["logprobs"]).all():
+            if verbosity > 0:
+                print("All log probabilities are NaN.")
+            return None
         if plot_tensors:
             plot_packed_tensors(packed_tensors)
         elif verbosity > 0:
@@ -189,7 +195,7 @@ class UnslothAPI(API):
                 http_client=DefaultAsyncHttpxClient(
                     timeout=httpx.Timeout(timeout=1200, connect=5.0),
                     limits=httpx.Limits(
-                        max_connections=2048, max_keepalive_connections=2048
+                        max_connections=100_000, max_keepalive_connections=100_000
                     ),
                 ),
             ),
@@ -282,10 +288,14 @@ class UnslothAPI(API):
             config.verbosity,
             config.plot_tensors,
         )
+        if packed_tensors is None:
+            if config.verbosity > 0:
+                print("Skipping tuning as there is no suitable data.")
+            return
         disk_packed_tensors = packed_tensors_to_dir(
             packed_tensors, f"{self._get_output_dir(model.name)}/tensors"
         )
-        await service.tune(disk_packed_tensors)
+        await service.tune(disk_packed_tensors, config)
 
     def _log_wandb_data(
         self,
