@@ -1,6 +1,5 @@
 import dataclasses
-from pydantic import BaseModel
-from typing import Literal, TYPE_CHECKING, TypedDict
+from typing import Any, TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
     from trl import GRPOConfig
@@ -11,6 +10,8 @@ if TYPE_CHECKING:
 def get_model_config(
     base_model: "types.BaseModel", output_dir: str, config: "ModelConfig | None"
 ) -> "ModelConfig":
+    from trl import GRPOConfig
+
     if config is None:
         config = ModelConfig()
     init_args = InitArgs(
@@ -27,7 +28,7 @@ def get_model_config(
         num_scheduler_steps=16,
         use_async=True,
     )
-    init_args.update(config.init_args or {})
+    init_args.update(config.get("init_args", {}))
     peft_args = PeftArgs(
         r=32,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
         target_modules=[
@@ -44,7 +45,7 @@ def get_model_config(
         use_gradient_checkpointing="unsloth",  # type: ignore
         random_state=3407,
     )
-    peft_args.update(config.peft_args or {})
+    peft_args.update(config.get("peft_args", {}))
     train_args = GRPOConfig(
         learning_rate=5e-6,
         adam_beta1=0.9,
@@ -60,13 +61,18 @@ def get_model_config(
         output_dir=output_dir,
     )
     train_args = dataclasses.replace(
-        train_args, **dataclasses.asdict(config.train_args or GRPOConfig())
+        train_args,
+        **config.get("train_args", {}),
     )
     # TODO: Add base model conditional configuration
-    return ModelConfig(init_args=init_args, peft_args=peft_args, train_args=train_args)
+    return ModelConfig(
+        init_args=init_args,
+        peft_args=peft_args,
+        train_args=dataclasses.asdict(train_args),
+    )
 
 
-class ModelConfig(BaseModel):
+class ModelConfig(TypedDict, total=False):
     """
     Model configuration.
 
@@ -76,9 +82,9 @@ class ModelConfig(BaseModel):
         train: Arguments for training the model.
     """
 
-    init_args: "InitArgs | None" = None
-    peft_args: "PeftArgs | None" = None
-    train_args: "GRPOConfig | None" = None
+    init_args: "InitArgs"
+    peft_args: "PeftArgs"
+    train_args: dict[str, Any]
 
 
 class InitArgs(TypedDict, total=False):
@@ -113,7 +119,7 @@ class PeftArgs(TypedDict, total=False):
     r: int
     target_modules: list[str]
     lora_alpha: int
-    lora_dropout: float
+    lora_dropout: int
     bias: str
     layers_to_transform: list[int] | None
     layers_pattern: str | None

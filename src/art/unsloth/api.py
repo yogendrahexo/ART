@@ -16,7 +16,7 @@ from ..api import API
 from ..config.model import get_model_config, ModelConfig
 from ..config.openai_server import OpenAIServerConfig
 from ..model import Model
-from .service import ModelService, StartOpenaiServer
+from .service import ModelService
 from ..types import BaseModel, Message, Trajectory, TuneConfig, Verbosity
 from ..utils import format_message
 from .pack import (
@@ -91,6 +91,10 @@ class UnslothAPI(API):
         return Model(api=self, name=name, base_model=base_model, _config=config)
 
     async def _get_service(self, model: Model) -> ModelService:
+        from trl import GRPOConfig
+
+        ModelService.model_rebuild()
+
         if model.name not in self._services:
             self._services[model.name] = ModelService(
                 host="localhost",

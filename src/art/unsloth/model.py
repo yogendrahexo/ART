@@ -8,7 +8,8 @@ from ..config.model import ModelConfig
 def get_model_and_tokenizer(
     config: ModelConfig,
 ) -> tuple[PeftModel, PreTrainedTokenizerBase]:
-    model, tokenizer = FastLanguageModel.from_pretrained(**config.init_args)
-    model = FastLanguageModel.get_peft_model(**config.peft_args)
-
+    model, tokenizer = FastLanguageModel.from_pretrained(**config.get("init_args", {}))
+    model = FastLanguageModel.get_peft_model(
+        model, **config.get("peft_args", {})  # type: ignore
+    )
     return model, tokenizer

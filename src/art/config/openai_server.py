@@ -23,19 +23,24 @@ def get_openai_server_config(
     if tool_use:
         server_args["enable_auto_tool_choice"] = True
         server_args["tool_call_parser"] = "hermes"
-    server_args.update(config.server_args or ServerArgs())
+    server_args.update(config.get("server_args") or {})
     engine_args = AsyncEngineArgs(
         model=base_model,
         num_scheduler_steps=16,
         served_model_name=base_model,
     )
     engine_args = dataclasses.replace(
-        engine_args, **dataclasses.asdict(config.engine_args or AsyncEngineArgs())
+        engine_args,
+        **(
+            dataclasses.asdict(config.get("engine_args") or AsyncEngineArgs())
+            if config.get("engine_args")
+            else {}
+        ),
     )
     return OpenAIServerConfig(server_args=server_args, engine_args=engine_args)
 
 
-class OpenAIServerConfig(BaseModel):
+class OpenAIServerConfig(TypedDict, total=False):
     """
     Server configuration.
 
@@ -47,8 +52,8 @@ class OpenAIServerConfig(BaseModel):
                      OpenAI-compatible server uses them elsewhere.
     """
 
-    server_args: "ServerArgs | None" = None
-    engine_args: "AsyncEngineArgs | None" = None
+    server_args: "ServerArgs | None"
+    engine_args: AsyncEngineArgs | None
 
 
 class ServerArgs(TypedDict, total=False):

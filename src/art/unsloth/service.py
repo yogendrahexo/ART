@@ -1,6 +1,6 @@
 import asyncio
 import functools
-from pydantic import BaseModel
+from pydantic import BaseModel, SkipValidation
 import torch
 import traceback
 from typing import Awaitable, Callable, cast, ParamSpec, TYPE_CHECKING, TypeVar
@@ -9,7 +9,6 @@ from .. import types
 from .checkpoints import get_iteration, get_last_iteration_dir
 from ..config.model import ModelConfig
 from ..config.openai_server import get_openai_server_config, OpenAIServerConfig
-from .model import get_model_and_tokenizer
 from .pack import DiskPackedTensors, packed_tensors_from_dir, PackedTensors
 from .train import get_trainer, train
 from .vllm import openai_server_task
@@ -43,10 +42,6 @@ def catch_and_print_errors(
     return async_wrapper
 
 
-class StartOpenaiServer(BaseModel):
-    tool_use: bool
-
-
 class TuneInputs(PackedTensors):
     config: types.TuneConfig
 
@@ -56,7 +51,7 @@ class ModelService(BaseModel):
     port: int
     model_name: str
     base_model: types.BaseModel
-    config: ModelConfig
+    config: SkipValidation[ModelConfig]
     output_dir: str
     process: asyncio.subprocess.Process | None = None
     _openai_server_task: asyncio.Task[None] | None = None
@@ -142,6 +137,8 @@ class ModelService(BaseModel):
 
     @functools.cached_property
     def model_and_tokenizer(self) -> tuple["PeftModel", "PreTrainedTokenizerBase"]:
+        from .model import get_model_and_tokenizer
+
         return get_model_and_tokenizer(self.config)
 
     @functools.cached_property
@@ -157,7 +154,7 @@ class ModelService(BaseModel):
         self._trainer = get_trainer(
             model=peft_model,
             tokenizer=tokenizer,
-            args=self.config.train_args or GRPOConfig(),
+            args=GRPOConfig(**self.config.get("train_args", {})),
             inputs_queue=self.inputs_queue,
         )
         return self._trainer

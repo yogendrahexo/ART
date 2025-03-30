@@ -40,7 +40,7 @@ def max_concurrent_tokens(path: str) -> int:
 
 
 def openai_server_task(
-    model: PeftModel,
+    model: "PeftModel",
     config: OpenAIServerConfig,
 ) -> asyncio.Task[None]:
     patch_get_lora_tokenizer_async()
@@ -65,8 +65,12 @@ def _openai_server_coroutine(
         description="vLLM OpenAI-Compatible RESTful API server."
     )
     parser = make_arg_parser(parser)
-    engine_args = dataclasses.asdict(config.engine_args or AsyncEngineArgs())
-    server_args = config.server_args or {}
+    engine_args = (
+        dataclasses.asdict(config["engine_args"] or AsyncEngineArgs())
+        if "engine_args" in config
+        else {}
+    )
+    server_args = config.get("server_args") or {}
     args = [
         *[
             f"--{key.replace('_', '-')}{f'={item}' if item is not True else ''}"
@@ -202,7 +206,9 @@ def openai_server_target(
         _: Namespace,
     ) -> AsyncIterator[EngineClient]:
         # Build RPCClient, which conforms to EngineClient Protocol.
-        engine_config = (config.engine_args or AsyncEngineArgs()).create_engine_config()
+        engine_config = (
+            config.get("engine_args") or AsyncEngineArgs()
+        ).create_engine_config()
         build_client = partial(MQLLMEngineClient, ipc_path, engine_config, engine_pid)
         mq_engine_client = await asyncio.get_running_loop().run_in_executor(
             None, build_client
