@@ -60,15 +60,11 @@ def get_model_config(
         save_strategy="no",
         output_dir=output_dir,
     )
-    train_args = dataclasses.replace(
-        train_args,
-        **config.get("train_args", {}),
-    )
     # TODO: Add base model conditional configuration
     return ModelConfig(
         init_args=init_args,
         peft_args=peft_args,
-        train_args=dataclasses.asdict(train_args),
+        train_args={**dataclasses.asdict(train_args), **config.get("train_args", {})},
     )
 
 

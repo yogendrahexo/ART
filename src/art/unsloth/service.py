@@ -1,6 +1,6 @@
 import asyncio
+from dataclasses import dataclass
 import functools
-from pydantic import BaseModel, SkipValidation
 import torch
 import traceback
 from typing import Awaitable, Callable, cast, ParamSpec, TYPE_CHECKING, TypeVar
@@ -46,12 +46,13 @@ class TuneInputs(PackedTensors):
     config: types.TuneConfig
 
 
-class ModelService(BaseModel):
+@dataclass
+class ModelService:
     host: str
     port: int
     model_name: str
     base_model: types.BaseModel
-    config: SkipValidation[ModelConfig]
+    config: ModelConfig
     output_dir: str
     process: asyncio.subprocess.Process | None = None
     _openai_server_task: asyncio.Task[None] | None = None
