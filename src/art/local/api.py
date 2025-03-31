@@ -6,6 +6,8 @@ from typing import cast
 import wandb
 from wandb.sdk.wandb_run import Run
 
+from art.config.openai_server import OpenAIServerConfig
+
 from ..api import API
 from ..model import Model
 from ..types import BaseModel, Message, Trajectory, TuneConfig, Verbosity
@@ -114,6 +116,7 @@ class LocalAPI(API):
         estimated_completion_tokens: int,
         tool_use: bool,
         verbosity: Verbosity,
+        config: OpenAIServerConfig | None,
     ) -> tuple[AsyncOpenAI, asyncio.Semaphore]:
         model_config = model_configs[model.base_model]()
         self._vllm = await start_vllm(
@@ -282,8 +285,8 @@ class LocalAPI(API):
                 loss=ComponentConfig(
                     GRPO,
                     clip_epsilon=config.clip_epsilon,
-                    entropy_coef=config.entropy_coef,
-                    kl_coef=config.kl_coef,
+                    entropy_coef=0.0,
+                    kl_coef=0.0,
                 ),
                 shuffle=True,
                 batch_size=32768 // config.sequence_length,
