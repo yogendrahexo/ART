@@ -1,4 +1,4 @@
-from typing import Any, cast, TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
     from transformers.training_args import (
@@ -81,7 +81,7 @@ class ModelConfig(TypedDict, total=False):
     Args:
         init: Arguments for initializing an Unsloth FastLanguageModel.
         peft: Arguments for creating an Unsloth PEFT model wrapper.
-        train: Arguments for training the model.
+        train: Arguments for the GRPO trainer.
     """
 
     init_args: "InitArgs"

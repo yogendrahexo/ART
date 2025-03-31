@@ -143,14 +143,13 @@ class ModelService:
 
     @functools.cached_property
     def trainer(self) -> "GRPOTrainer":
-        import unsloth  # type: ignore
         from trl import GRPOConfig
 
         peft_model, tokenizer = self.model_and_tokenizer
         self._trainer = get_trainer(
             model=peft_model,
             tokenizer=tokenizer,
-            args=GRPOConfig(**self.config.get("train_args", {})),
+            args=GRPOConfig(**self.config.get("train_args", {})),  # type: ignore
             inputs_queue=self.inputs_queue,
         )
         return self._trainer

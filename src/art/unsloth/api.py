@@ -72,12 +72,11 @@ class UnslothAPI(API):
 
     async def get_or_create_model(self, name: str, base_model: BaseModel) -> Model:
         """
-        Retrieves an existing model or creates a new one.
+        Retrieve an existing model or create a new one.
 
         Args:
             name: The model's name.
             base_model: The model's base model.
-            tool_use: Whether to enable tool use.
 
         Returns:
             Model: A model instance.
@@ -85,10 +84,22 @@ class UnslothAPI(API):
         return await self._get_or_create_model(name, base_model, None)
 
     async def _get_or_create_model(
-        self, name: str, base_model: BaseModel, config: ModelConfig | None
+        self, name: str, base_model: BaseModel, _config: ModelConfig | None
     ) -> Model:
+        """
+        Private method to retrieve an existing model or create a new one.
+
+        Args:
+            name: The model's name.
+            base_model: The model's base model.
+            _config: A ModelConfig object. May be subject to breaking changes at any time.
+                Use at your own risk.
+
+        Returns:
+            Model: A model instance.
+        """
         os.makedirs(self._get_output_dir(name), exist_ok=True)
-        return Model(api=self, name=name, base_model=base_model, _config=config)
+        return Model(api=self, name=name, base_model=base_model, _config=_config)
 
     async def _get_service(self, model: Model) -> ModelService:
         if model.name not in self._services:
@@ -105,6 +116,7 @@ class UnslothAPI(API):
                 output_dir=self._get_output_dir(model.name),
             )
             if not self._in_process:
+                os.environ["IMPORT_UNSLOTH"] = "1"
                 self._services[model.name] = move_to_child_process(
                     self._services[model.name]
                 )
@@ -214,16 +226,7 @@ class UnslothAPI(API):
                     ),
                 ),
             ),
-            asyncio.Semaphore(
-                int(
-                    max_concurrent_tokens(
-                        "./logs/vllm.log"
-                        if self._in_process
-                        else f"{self._get_output_dir(model.name)}/logs/vllm.log"
-                    )
-                    / estimated_completion_tokens
-                )
-            ),
+            asyncio.Semaphore(226),
         )
 
     async def _close_openai_client(self, client: AsyncOpenAI) -> None:

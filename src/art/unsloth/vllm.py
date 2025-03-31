@@ -1,7 +1,6 @@
 from argparse import Namespace
 import asyncio
 from contextlib import asynccontextmanager
-import dataclasses
 from functools import partial
 import logging
 import multiprocessing
@@ -65,8 +64,8 @@ def _openai_server_coroutine(
         description="vLLM OpenAI-Compatible RESTful API server."
     )
     parser = make_arg_parser(parser)
-    engine_args = config.get("engine_args") or {}
-    server_args = config.get("server_args") or {}
+    engine_args = config.get("engine_args", {})
+    server_args = config.get("server_args", {})
     args = [
         *[
             f"--{key.replace('_', '-')}{f'={item}' if item is not True else ''}"
@@ -203,7 +202,7 @@ def openai_server_target(
     ) -> AsyncIterator[EngineClient]:
         # Build RPCClient, which conforms to EngineClient Protocol.
         engine_config = AsyncEngineArgs(
-            **config.get("engine_args") or {}
+            **config.get("engine_args", {})
         ).create_engine_config()
         build_client = partial(MQLLMEngineClient, ipc_path, engine_config, engine_pid)
         mq_engine_client = await asyncio.get_running_loop().run_in_executor(

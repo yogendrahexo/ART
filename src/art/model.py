@@ -45,7 +45,7 @@ class Model:
                 )
         """
         return self._openai_client(
-            estimated_completion_tokens, tool_use, verbosity, config=None
+            estimated_completion_tokens, tool_use, verbosity, _config=None
         )
 
     @asynccontextmanager
@@ -54,10 +54,30 @@ class Model:
         estimated_completion_tokens: int = 1024,
         tool_use: bool = False,
         verbosity: Verbosity = 1,
-        config: OpenAIServerConfig | None = None,
+        _config: OpenAIServerConfig | None = None,
     ) -> AsyncGenerator[AsyncOpenAI, None]:
+        """
+        Private method for the context manager for an OpenAI client to a managed inference service.
+
+        Args:
+            estimated_completion_tokens: Estimated completion tokens per request.
+            tool_use: Whether to enable tool use.
+            verbosity: Verbosity level.
+            _config: An OpenAIServerConfig object. May be subject to breaking changes at any time.
+                Use at your own risk.
+
+        Yields:
+            AsyncOpenAI: An asynchronous OpenAI client.
+
+        Example:
+            async with model.openai_client() as client:
+                chat_completion = await client.chat.completions.create(
+                    model=model.name,
+                    messages=[{"role": "user", "content": "Hello, world!"}],
+                )
+        """
         client, semaphore = await self.api._get_openai_client(
-            self, estimated_completion_tokens, tool_use, verbosity, config
+            self, estimated_completion_tokens, tool_use, verbosity, _config
         )
         try:
             yield patch_openai(client, semaphore)
