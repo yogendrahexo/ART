@@ -54,13 +54,8 @@ class ModelService:
     base_model: types.BaseModel
     config: ModelConfig
     output_dir: str
-    process: asyncio.subprocess.Process | None = None
     _openai_server_task: asyncio.Task[None] | None = None
     _train_task: asyncio.Task[None] | None = None
-
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "allow"
 
     @catch_and_print_errors
     async def start_openai_server(

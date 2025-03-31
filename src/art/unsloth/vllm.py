@@ -65,11 +65,7 @@ def _openai_server_coroutine(
         description="vLLM OpenAI-Compatible RESTful API server."
     )
     parser = make_arg_parser(parser)
-    engine_args = (
-        dataclasses.asdict(config["engine_args"] or AsyncEngineArgs())
-        if "engine_args" in config
-        else {}
-    )
+    engine_args = config.get("engine_args") or {}
     server_args = config.get("server_args") or {}
     args = [
         *[
@@ -206,8 +202,8 @@ def openai_server_target(
         _: Namespace,
     ) -> AsyncIterator[EngineClient]:
         # Build RPCClient, which conforms to EngineClient Protocol.
-        engine_config = (
-            config.get("engine_args") or AsyncEngineArgs()
+        engine_config = AsyncEngineArgs(
+            **config.get("engine_args") or {}
         ).create_engine_config()
         build_client = partial(MQLLMEngineClient, ipc_path, engine_config, engine_pid)
         mq_engine_client = await asyncio.get_running_loop().run_in_executor(
