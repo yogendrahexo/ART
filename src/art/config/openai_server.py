@@ -6,12 +6,14 @@ from .. import types
 def get_openai_server_config(
     model_name: str,
     base_model: types.BaseModel,
+    log_file: str,
     lora_path: str,
     tool_use: bool,
     config: "OpenAIServerConfig | None" = None,
 ) -> "OpenAIServerConfig":
     if config is None:
         config = OpenAIServerConfig()
+    log_file = config.get("log_file", log_file)
     server_args = ServerArgs(
         api_key="default",
         lora_modules=[f'{{"name": "{model_name}", "path": "{lora_path}"}}'],
@@ -25,9 +27,12 @@ def get_openai_server_config(
         model=base_model,
         num_scheduler_steps=16,
         served_model_name=base_model,
+        disable_log_requests=True,
     )
     engine_args.update(config.get("engine_args", {}))
-    return OpenAIServerConfig(server_args=server_args, engine_args=engine_args)
+    return OpenAIServerConfig(
+        log_file=log_file, server_args=server_args, engine_args=engine_args
+    )
 
 
 class OpenAIServerConfig(TypedDict, total=False):
@@ -35,6 +40,7 @@ class OpenAIServerConfig(TypedDict, total=False):
     Server configuration.
 
     Args:
+        log_file: Path to the log file.
         server_args: Arguments for the vLLM OpenAI-compatible server.
         engine_args: Additional vLLM engine arguments for the OpenAI-compatible server.
                      Note that since the vLLM engine is initialized with Unsloth,
@@ -42,6 +48,7 @@ class OpenAIServerConfig(TypedDict, total=False):
                      OpenAI-compatible server uses them elsewhere.
     """
 
+    log_file: str
     server_args: "ServerArgs"
     engine_args: "EngineArgs"
 

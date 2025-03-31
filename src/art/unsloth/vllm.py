@@ -5,7 +5,6 @@ from functools import partial
 import logging
 import multiprocessing
 import os
-import re
 from typing import AsyncIterator, Coroutine, Any
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.multiprocessing.client import MQLLMEngineClient
@@ -15,9 +14,9 @@ from vllm.entrypoints.openai.cli_args import make_arg_parser, validate_parsed_se
 from vllm.entrypoints.openai.serving_models import LoRARequest  # type: ignore
 from vllm.logger import _DATE_FORMAT, _FORMAT
 from vllm.utils import get_open_zmq_ipc_path, FlexibleArgumentParser
-from typing import cast, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from uvicorn.config import LOGGING_CONFIG
 
-from .. import UVICORN_LOGGING_CONFIG_PATH
 from .async_multiprocessing_engine import MQAsyncLLMEngine
 from ..config.openai_server import OpenAIServerConfig
 
@@ -29,15 +28,6 @@ LoRARequest.lora_tensors = {}  # type: ignore
 LoRARequest.lora_embeddings = {}  # type: ignore
 
 
-def max_concurrent_tokens(path: str) -> int:
-    with open(path, "r") as f:
-        matches = re.findall(
-            r"Maximum concurrency for (\d+) tokens per request: ([\d.]+)x",
-            f.read(),
-        )
-        return int(int(matches[-1][0]) * float(matches[-1][1]))
-
-
 def openai_server_task(
     model: "PeftModel",
     config: OpenAIServerConfig,
@@ -45,6 +35,7 @@ def openai_server_task(
     patch_get_lora_tokenizer_async()
     patch_listen_for_disconnect()
     patch_multi_step_model_runner(model)
+    set_vllm_log_file(config.get("log_file", "vllm.log"))
 
     @asynccontextmanager
     async def build_async_engine_client(
@@ -77,7 +68,10 @@ def _openai_server_coroutine(
     ]
     namespace = parser.parse_args(args)
     validate_parsed_serve_args(namespace)
-    return api_server.run_server(namespace, log_config=UVICORN_LOGGING_CONFIG_PATH)
+    return api_server.run_server(
+        namespace,
+        log_config=get_uvicorn_logging_config(config.get("log_file", "vllm.log")),
+    )
 
 
 def patch_get_lora_tokenizer_async() -> None:
@@ -125,6 +119,24 @@ def patch_multi_step_model_runner(model: "PeftModel") -> None:
     model_runner.list_loras = base_model_runner.list_loras
 
 
+def get_uvicorn_logging_config(path: str) -> dict[str, Any]:
+    return {
+        **LOGGING_CONFIG,
+        "handlers": {
+            "default": {
+                "formatter": "default",
+                "class": "logging.FileHandler",
+                "filename": path,
+            },
+            "access": {
+                "formatter": "default",
+                "class": "logging.FileHandler",
+                "filename": path,
+            },
+        },
+    }
+
+
 def set_vllm_log_file(path: str) -> None:
     """
     Sets the vLLM log file to the given path.
@@ -149,6 +161,9 @@ def set_vllm_log_file(path: str) -> None:
 
     # Add the handler to the logger
     vllm_logger.addHandler(file_handler)
+
+    # Set log level to filter out DEBUG messages
+    vllm_logger.setLevel(logging.INFO)
 
 
 def mp_openai_server_task(

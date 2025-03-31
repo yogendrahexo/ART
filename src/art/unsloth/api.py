@@ -30,7 +30,6 @@ from .checkpoints import (
     clear_iteration_dirs,
     get_iteration,
 )
-from .vllm import max_concurrent_tokens
 
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerBase
@@ -84,7 +83,7 @@ class UnslothAPI(API):
         return await self._get_or_create_model(name, base_model, None)
 
     async def _get_or_create_model(
-        self, name: str, base_model: BaseModel, _config: ModelConfig | None
+        self, name: str, base_model: BaseModel, _config: ModelConfig | None = None
     ) -> Model:
         """
         Private method to retrieve an existing model or create a new one.

@@ -72,8 +72,9 @@ class ModelService:
             config=get_openai_server_config(
                 model_name=self.model_name,
                 base_model=self.base_model,
-                tool_use=tool_use,
+                log_file=f"{self.output_dir}/logs/vllm.log",
                 lora_path=lora_path,
+                tool_use=tool_use,
                 config=config,
             ),
         )
@@ -91,12 +92,9 @@ class ModelService:
     async def tune(
         self, disk_packed_tensors: DiskPackedTensors, config: types.TuneConfig
     ) -> None:
-        from unsloth_zoo.training_utils import set_training, unset_training  # type: ignore
-
         packed_tensors = packed_tensors_from_dir(**disk_packed_tensors)
         await self.inputs_queue.join()
         model, _ = self.model_and_tokenizer
-        set_training(model)
         trainer = self.trainer
         for i in range(packed_tensors["tokens"].shape[0]):
             self.inputs_queue.put_nowait(
@@ -115,7 +113,6 @@ class ModelService:
             [self._train_task, asyncio.create_task(self.inputs_queue.join())],
             return_when=asyncio.FIRST_COMPLETED,
         )
-        # unset_training(peft_model)
         if exception := done.exception():
             raise exception
         # Save the new lora
