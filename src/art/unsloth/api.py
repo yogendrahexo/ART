@@ -221,7 +221,7 @@ class UnslothAPI(API):
         return (
             AsyncOpenAI(
                 base_url=f"http://{server_args.get('host', '0.0.0.0')}:{server_args.get('port', 8000)}/v1",
-                api_key="default",
+                api_key=server_args.get("api_key", "default"),
                 http_client=DefaultAsyncHttpxClient(
                     timeout=httpx.Timeout(timeout=1200, connect=5.0),
                     limits=httpx.Limits(
