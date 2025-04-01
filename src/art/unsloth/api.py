@@ -7,10 +7,10 @@ from openai import (
     DefaultAsyncHttpxClient,
 )
 import os
-from typing import cast
+import subprocess
+from typing import cast, TYPE_CHECKING
 import wandb
 from wandb.sdk.wandb_run import Run
-from typing import TYPE_CHECKING
 
 from ..api import API
 from ..config.model import get_model_config, ModelConfig
@@ -115,6 +115,8 @@ class UnslothAPI(API):
                 output_dir=self._get_output_dir(model.name),
             )
             if not self._in_process:
+                # Kill all "model-service" processes to free up GPU memory
+                subprocess.run(["pkill", "-9", "model-service"])
                 os.environ["IMPORT_UNSLOTH"] = "1"
                 self._services[model.name] = move_to_child_process(
                     self._services[model.name],

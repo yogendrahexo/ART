@@ -27,8 +27,6 @@ class CausallLM(transformers.PreTrainedModel, transformers.GenerationMixin): ...
 
 class ModelState:
     def __init__(self, config: ModelConfig) -> None:
-        # Kill all "model-service" processes to free up GPU memory
-        subprocess.run(["pkill", "-9", "model-service"])
         # Initialize Unsloth model
         self.model, self.tokenizer = cast(
             tuple[CausallLM, transformers.PreTrainedTokenizerBase],
