@@ -3,9 +3,10 @@ from dataclasses import dataclass
 import multiprocessing as mp
 import nest_asyncio
 import os
+import setproctitle
 import sys
 from tblib import pickling_support
-from typing import Any, cast, TypeVar, Optional
+from typing import Any, cast, TypeVar
 import uuid
 
 from .traceback import streamline_tracebacks
@@ -19,7 +20,9 @@ nest_asyncio.apply()
 T = TypeVar("T")
 
 
-def move_to_child_process(obj: T, log_file: Optional[str] = None) -> T:
+def move_to_child_process(
+    obj: T, log_file: str | None = None, process_name: str | None = None
+) -> T:
     """
     Move an object to a child process and return a proxy to it.
 
@@ -31,12 +34,13 @@ def move_to_child_process(obj: T, log_file: Optional[str] = None) -> T:
         obj: The object to move to a child process.
         log_file: Optional path to a file where stdout/stderr from the child process
                  will be redirected. If None, output goes to the parent process.
+        process_name: Optional name for the child process.
 
     Returns:
         A proxy object that forwards method calls to the original object in the child process.
         The proxy has the same interface as the original object.
     """
-    return cast(T, Proxy(obj, log_file))
+    return cast(T, Proxy(obj, log_file, process_name))
 
 
 @dataclass
@@ -55,12 +59,15 @@ class Response:
 
 
 class Proxy:
-    def __init__(self, obj: object, log_file: Optional[str] = None) -> None:
+    def __init__(
+        self, obj: object, log_file: str | None = None, process_name: str | None = None
+    ) -> None:
         self._obj = obj
         self._requests = mp.Queue()
         self._responses = mp.Queue()
         self._process = mp.Process(
-            target=_target, args=(obj, self._requests, self._responses, log_file)
+            target=_target,
+            args=(obj, self._requests, self._responses, log_file, process_name),
         )
         self._process.start()
         self._futures: dict[str, asyncio.Future] = {}
@@ -119,8 +126,14 @@ class Proxy:
 
 
 def _target(
-    obj: object, requests: mp.Queue, responses: mp.Queue, log_file: Optional[str] = None
+    obj: object,
+    requests: mp.Queue,
+    responses: mp.Queue,
+    log_file: str | None = None,
+    process_name: str | None = None,
 ) -> None:
+    if process_name:
+        setproctitle.setproctitle(process_name)
     if log_file:
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
         sys.stdout = sys.stderr = open(log_file, "a", buffering=1)

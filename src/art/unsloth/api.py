@@ -117,7 +117,8 @@ class UnslothAPI(API):
             if not self._in_process:
                 os.environ["IMPORT_UNSLOTH"] = "1"
                 self._services[model.name] = move_to_child_process(
-                    self._services[model.name]
+                    self._services[model.name],
+                    process_name=f"model-service",
                 )
         return self._services[model.name]
 

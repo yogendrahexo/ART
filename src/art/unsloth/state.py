@@ -3,6 +3,7 @@ import unsloth
 from datasets import Dataset
 import nest_asyncio
 import peft
+import subprocess
 import torch
 import transformers
 from trl import GRPOConfig, GRPOTrainer
@@ -26,11 +27,15 @@ class CausallLM(transformers.PreTrainedModel, transformers.GenerationMixin): ...
 
 class ModelState:
     def __init__(self, config: ModelConfig) -> None:
+        # Kill all "model-service" processes to free up GPU memory
+        subprocess.run(["pkill", "-9", "model-service"])
+        # Initialize Unsloth model
         self.model, self.tokenizer = cast(
             tuple[CausallLM, transformers.PreTrainedTokenizerBase],
             unsloth.FastLanguageModel.from_pretrained(**config.get("init_args", {})),
         )
         self.vllm = vLLMState(cast("vllm.AsyncLLMEngine", self.model.vllm_engine))
+        # Initialize PEFT model
         self.peft_model = cast(
             peft.peft_model.PeftModelForCausalLM,
             unsloth.FastLanguageModel.get_peft_model(
@@ -38,6 +43,7 @@ class ModelState:
             ),
         )
         self.lora_model = cast(peft.tuners.lora.LoraModel, self.peft_model.base_model)
+        # Initialize trainer
         self.trainer = GRPOTrainer(
             model=self.peft_model,  # type: ignore
             reward_funcs=[],
