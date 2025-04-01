@@ -3,7 +3,6 @@ import unsloth
 from datasets import Dataset
 import nest_asyncio
 import peft
-import subprocess
 import torch
 import transformers
 from trl import GRPOConfig, GRPOTrainer
