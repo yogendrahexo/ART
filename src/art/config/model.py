@@ -73,6 +73,7 @@ def get_model_config(
         save_strategy="no",
         output_dir=output_dir,
         disable_tqdm=True,
+        report_to="none",
     )
     train_args.update(base_model_config.get("train_args", {}))
     train_args.update(config.get("train_args", {}))
