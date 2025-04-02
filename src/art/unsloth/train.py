@@ -153,6 +153,7 @@ def get_compute_loss_fn(trainer: "GRPOTrainer") -> Callable[..., torch.Tensor]:
                 reverse_kl_divergence = torch.zeros_like(advantages)
             mean_policy_loss = policy_loss.mean()
             mean_kl_divergence = reverse_kl_divergence.mean()
+            trainer._metrics["lr"].append(config.lr)
             trainer._metrics["policy_loss"].append(mean_policy_loss.item())
             if config.kl_coef > 0.0:
                 trainer._metrics["kl_divergence"].append(mean_kl_divergence.item())
@@ -179,6 +180,7 @@ def get_log_fn(
             metrics = {f"eval_{key}": val for key, val in metrics.items()}
 
         logs = {**logs, **metrics}
+        logs.pop("learning_rate", None)
         results_queue.put_nowait(logs)
         trainer._metrics.clear()
 
