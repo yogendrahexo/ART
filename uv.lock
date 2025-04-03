@@ -16,8 +16,8 @@ resolution-markers = [
 [manifest]
 overrides = [
     { name = "bitsandbytes", marker = "sys_platform == 'linux'" },
-    { name = "unsloth", marker = "sys_platform == 'linux'", git = "https://github.com/bradhilton/unsloth" },
-    { name = "unsloth-zoo", marker = "sys_platform == 'linux'", git = "https://github.com/bradhilton/unsloth-zoo" },
+    { name = "unsloth", marker = "sys_platform == 'linux'", git = "https://github.com/bradhilton/unsloth?rev=9e12c5019a77ec60349cb0a33ecdcf83e482bf01" },
+    { name = "unsloth-zoo", marker = "sys_platform == 'linux'", git = "https://github.com/bradhilton/unsloth-zoo?rev=1a8930fe7cc41f075c4b16bcb29f637cff48a66d" },
     { name = "xformers", marker = "sys_platform == 'linux'" },
 ]
 
@@ -262,8 +262,8 @@ requires-dist = [
     { name = "torchtune", specifier = "==0.5.0" },
     { name = "trl", specifier = "==0.15.2" },
     { name = "typer", specifier = ">=0.15.2" },
-    { name = "unsloth", marker = "sys_platform == 'linux'", git = "https://github.com/bradhilton/unsloth" },
-    { name = "unsloth-zoo", marker = "sys_platform == 'linux'", git = "https://github.com/bradhilton/unsloth-zoo" },
+    { name = "unsloth", marker = "sys_platform == 'linux'", git = "https://github.com/bradhilton/unsloth?rev=9e12c5019a77ec60349cb0a33ecdcf83e482bf01" },
+    { name = "unsloth-zoo", marker = "sys_platform == 'linux'", git = "https://github.com/bradhilton/unsloth-zoo?rev=1a8930fe7cc41f075c4b16bcb29f637cff48a66d" },
     { name = "vllm", specifier = ">=0.7.0" },
     { name = "wandb", specifier = ">=0.19.8" },
 ]
@@ -4463,13 +4463,13 @@ wheels = [
 
 [[package]]
 name = "unsloth"
-version = "2025.3.18"
-source = { git = "https://github.com/bradhilton/unsloth#921b88fba1fa7eaa8ca0b884855347300bac6e99" }
+version = "2025.3.19"
+source = { git = "https://github.com/bradhilton/unsloth?rev=9e12c5019a77ec60349cb0a33ecdcf83e482bf01#9e12c5019a77ec60349cb0a33ecdcf83e482bf01" }
 
 [[package]]
 name = "unsloth-zoo"
-version = "2025.3.16"
-source = { git = "https://github.com/bradhilton/unsloth-zoo#8220bab1c34694ab92eee1361f5039a9c71f7d87" }
+version = "2025.3.17"
+source = { git = "https://github.com/bradhilton/unsloth-zoo?rev=1a8930fe7cc41f075c4b16bcb29f637cff48a66d#1a8930fe7cc41f075c4b16bcb29f637cff48a66d" }
 dependencies = [
     { name = "accelerate", marker = "sys_platform == 'linux'" },
     { name = "cut-cross-entropy", marker = "sys_platform == 'linux'" },
