@@ -34,7 +34,7 @@ def get_model_config(
         enable_prefix_caching=True,
         gpu_memory_utilization=0.6,  # Reduce if out of memory
         max_lora_rank=8,
-        num_scheduler_steps=16,
+        num_scheduler_steps=1,
         use_async=True,
     )
     init_args.update(base_model_config.get("init_args", {}))
