@@ -117,6 +117,7 @@ def get_compute_loss_fn(
         assistant_mask = shift_tensor(inputs["assistant_mask"], False).to(
             new_logprobs.dtype
         )
+        weights = shift_tensor(inputs["weights"], 0.0)
         # Assume missing old logprobs were sampled under the current policy
         old_logprobs = torch.where(
             torch.isnan(old_logprobs),
@@ -138,8 +139,8 @@ def get_compute_loss_fn(
         else:
             kl_div = torch.zeros_like(policy_loss)
 
-        policy_loss = policy_loss * assistant_mask
-        kl_div = kl_div * assistant_mask
+        policy_loss = policy_loss * weights * assistant_mask
+        kl_div = kl_div * weights * assistant_mask
         mean_policy_loss = policy_loss.sum() / (assistant_mask.sum() + 1e-6)
         mean_kl = kl_div.sum() / (assistant_mask.sum() + 1e-6)
 
