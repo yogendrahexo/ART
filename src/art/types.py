@@ -1,11 +1,7 @@
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
-from openai.types.chat.chat_completion_message_tool_call_param import (
-    ChatCompletionMessageToolCallParam,
-)
-from openai.types.chat.chat_completion_tool_param import ChatCompletionToolParam
 import pydantic
-from typing import Iterable, Literal
+from typing import Literal
 
 BaseModel = Literal[
     "Qwen/Qwen2.5-0.5B-Instruct",
@@ -21,15 +17,12 @@ Message = ChatCompletionMessageParam
 MessageOrChoice = Message | Choice
 Messages = list[Message]
 MessagesAndChoices = list[MessageOrChoice]
-ToolCall = ChatCompletionMessageToolCallParam
-Tools = Iterable[ChatCompletionToolParam]
 
 
 class Trajectory(pydantic.BaseModel):
     messages_and_choices: MessagesAndChoices
     reward: float
     metrics: dict[str, float] = {}
-    tools: Tools | None = None
 
 
 class TuneConfig(pydantic.BaseModel):

@@ -114,10 +114,6 @@ def tokenize_trajectory(
             else {
                 "role": "assistant",
                 "content": message_or_choice.message.content or "",
-                "tool_calls": [
-                    tool_call.model_dump()
-                    for tool_call in message_or_choice.message.tool_calls or []
-                ],
             }
         )
         for message_or_choice in trajectory.messages_and_choices
@@ -125,15 +121,12 @@ def tokenize_trajectory(
     # Update the chat template to add generation tags for assistant token masking.
     # TODO: Improve the way we get chat templates, potentially just use the default
     # chat template and identify the assistant tokens a different way.
-    chat_template = _updated_chat_template(
-        tokenizer.get_chat_template("tool_use" if trajectory.tools else None)
-    )
+    chat_template = _updated_chat_template(tokenizer.get_chat_template())
     # Apply the chat template to the conversation to get a string representation.
     chat = cast(
         str,
         tokenizer.apply_chat_template(
             conversation,
-            tools=list(trajectory.tools) if trajectory.tools else None,  # type: ignore
             chat_template=chat_template,
             tokenize=False,
         ),
@@ -143,7 +136,6 @@ def tokenize_trajectory(
         TokenizedResultDict,
         tokenizer.apply_chat_template(
             conversation,
-            tools=list(trajectory.tools) if trajectory.tools else None,  # type: ignore
             chat_template=chat_template,
             return_dict=True,
             return_assistant_tokens_mask=True,
