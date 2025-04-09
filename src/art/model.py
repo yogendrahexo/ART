@@ -61,7 +61,7 @@ class Model:
         self,
         benchmark: str = "val/reward",
         benchmark_smoothing: float = 1.0,
-        verbosity: Verbosity = 1,
+        verbosity: Verbosity = 1,  # REMOVE?
     ) -> None:
         """
         Delete all but the latest and best checkpoints.
@@ -80,7 +80,7 @@ class Model:
         self,
         benchmark: str = "val/reward",
         benchmark_smoothing: float = 1.0,
-        verbosity: Verbosity = 1,
+        verbosity: Verbosity = 1,  # REMOVE?
     ) -> None:
         """
         DEPRECATED: Delete all but the latest and best iteration checkpoints.

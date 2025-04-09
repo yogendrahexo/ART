@@ -22,12 +22,12 @@ async def gather_trajectories(
     ],
     *,
     pbar_desc: str | None = None,
-    pbar_total_completion_tokens: bool = True,
-    return_exceptions: Literal[True] = True,
-    stream_chat_completions: bool | int | float = False,
-    streaming_chat_completions_dir: str = "./streaming-chat-completions",
-    clear_streaming_chat_completions_dir: bool = True,
-) -> list[list[Trajectory | BaseException]]: ...
+    pbar_total_completion_tokens: bool = True,  # REMOVE?
+    return_exceptions: Literal[False] = False,
+    stream_chat_completions: bool | int | float = False,  # REMOVE?
+    streaming_chat_completions_dir: str = "./streaming-chat-completions",  # REMOVE?
+    clear_streaming_chat_completions_dir: bool = True,  # REMOVE?
+) -> list[list[Trajectory]]: ...
 
 
 @overload
@@ -39,11 +39,11 @@ async def gather_trajectories(
     *,
     pbar_desc: str | None = None,
     pbar_total_completion_tokens: bool = True,
-    return_exceptions: Literal[False],
+    return_exceptions: Literal[True],
     stream_chat_completions: bool | int | float = False,
     streaming_chat_completions_dir: str = "./streaming-chat-completions",
     clear_streaming_chat_completions_dir: bool = True,
-) -> list[list[Trajectory]]: ...
+) -> list[list[Trajectory | BaseException]]: ...
 
 
 async def gather_trajectories(
@@ -54,7 +54,7 @@ async def gather_trajectories(
     *,
     pbar_desc: str | None = None,
     pbar_total_completion_tokens: bool = True,
-    return_exceptions: bool = True,
+    return_exceptions: bool = False,
     stream_chat_completions: bool | int | float = False,
     streaming_chat_completions_dir: str = "./streaming-chat-completions",
     clear_streaming_chat_completions_dir: bool = True,

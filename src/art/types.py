@@ -26,11 +26,11 @@ class Trajectory(pydantic.BaseModel):
 
 
 class TuneConfig(pydantic.BaseModel):
-    learning_rate_multiplier: float = 1.0
+    learning_rate_multiplier: float = 1.0  # REMOVE?
     beta: float = 0.0
 
     # GRPO params
-    clip_epsilon: float = 0.2
+    clip_epsilon: float = 0.2  # RENAME?
     kl_coef: float = pydantic.Field(
         default=0.0,
         deprecated="`kl_coef` is deprecated, use `beta` instead.",
@@ -40,9 +40,9 @@ class TuneConfig(pydantic.BaseModel):
     lr: float = pydantic.Field(
         default=5e-6,
         deprecated="`lr` is deprecated, use `learning_rate_multiplier` instead.",
-    )
-    betas: tuple[float, float] = (0.9, 0.99)
-    weight_decay: float = 0.1
+    )  # KEEP?
+    betas: tuple[float, float] = (0.9, 0.99)  # REMOVE?
+    weight_decay: float = 0.1  # REMOVE?
 
     # Tensor packing params
     sequence_length: int | None = pydantic.Field(
@@ -51,8 +51,8 @@ class TuneConfig(pydantic.BaseModel):
     )
 
     # Logging params
-    plot_tensors: bool = False
-    verbosity: "Verbosity" = 1
+    plot_tensors: bool = False  # REMOVE?
+    verbosity: "Verbosity" = 1  # REMOVE?
 
 
 Verbosity = Literal[0, 1, 2]
