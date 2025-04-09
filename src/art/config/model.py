@@ -1,25 +1,24 @@
 import torch
-from typing import Literal, TYPE_CHECKING, TypedDict
+from transformers.debug_utils import DebugOption
+from transformers.training_args import OptimizerNames
+from transformers.trainer_utils import (
+    FSDPOption,
+    HubStrategy,
+    IntervalStrategy,
+    SaveStrategy,
+    SchedulerType,
+)
+from typing import TYPE_CHECKING, TypedDict
 
 
 if TYPE_CHECKING:
-    from transformers.training_args import (
-        DebugOption,
-        FSDPOption,
-        HubStrategy,
-        IntervalStrategy,
-        OptimizerNames,
-        SaveStrategy,
-        SchedulerType,
-    )
-
     from .. import types
 
 
 def get_model_config(
     base_model: "types.BaseModel", output_dir: str, config: "ModelConfig | None"
 ) -> "ModelConfig":
-    from ..unsloth.checkpoints import get_last_iteration_dir
+    from ..local.checkpoints import get_last_iteration_dir
 
     if config is None:
         config = ModelConfig()
@@ -74,6 +73,7 @@ def get_model_config(
         per_device_train_batch_size=2,
         gradient_accumulation_steps=1,  # Increase to 4 for smoother training
         num_generations=2,  # Decrease if out of memory
+        max_grad_norm=0.1,
         save_strategy="no",
         output_dir=output_dir,
         disable_tqdm=True,
@@ -254,7 +254,6 @@ class TrainArgs(TypedDict, total=False):
     include_for_metrics: list[str]
     eval_do_concat_batches: bool
     fp16_backend: str
-    evaluation_strategy: "IntervalStrategy | str"
     push_to_hub_model_id: str | None
     push_to_hub_organization: str | None
     push_to_hub_token: str | None
@@ -267,8 +266,6 @@ class TrainArgs(TypedDict, total=False):
     torch_compile: bool
     torch_compile_backend: str | None
     torch_compile_mode: str | None
-    dispatch_batches: bool | None
-    split_batches: bool | None
     include_tokens_per_second: bool | None
     include_num_input_tokens_seen: bool | None
     neftune_noise_alpha: float | None

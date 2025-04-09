@@ -1,32 +1,40 @@
 import asyncio
 from contextlib import asynccontextmanager
-import unsloth
+import gc
+import unsloth  # type: ignore
 from datasets import Dataset
 import nest_asyncio
 import os
 import peft
 import torch
-import transformers
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
+from transformers.utils.dummy_pt_objects import (
+    PreTrainedModel,
+    GenerationMixin,
+)
 from trl import GRPOConfig, GRPOTrainer
 from typing import AsyncGenerator, cast, TYPE_CHECKING
+import vllm
+from vllm.worker.worker_base import WorkerWrapperBase
+from vllm.worker.multi_step_model_runner import MultiStepModelRunner
 
 from ..config.model import ModelConfig
-from .train import free_memory
 
 if TYPE_CHECKING:
-    import vllm
-    from vllm.worker.worker_base import WorkerWrapperBase
-    from vllm.worker.multi_step_model_runner import MultiStepModelRunner
-
     from .service import TuneInputs
 
 nest_asyncio.apply()
 
 
-class CausallLM(transformers.PreTrainedModel, transformers.GenerationMixin): ...
+class CausallLM(PreTrainedModel, GenerationMixin):
+    vllm_engine: "vllm.AsyncLLMEngine"
 
 
 class ModelState:
+    """
+    A class responsible for initializing and holding references to the model and related state.
+    """
+
     def __init__(self, config: ModelConfig) -> None:
         from vllm.engine import async_llm_engine
 
@@ -44,14 +52,12 @@ class ModelState:
         empty_cache = torch.cuda.empty_cache
         torch.cuda.empty_cache = lambda: None
         self.model, self.tokenizer = cast(
-            tuple[CausallLM, transformers.PreTrainedTokenizerBase],
+            tuple[CausallLM, PreTrainedTokenizerBase],
             unsloth.FastLanguageModel.from_pretrained(**config.get("init_args", {})),
         )
         torch.cuda.empty_cache = empty_cache
         torch.cuda.empty_cache()
-        self.vllm = vLLMState(
-            cast("vllm.AsyncLLMEngine", self.model.vllm_engine), enable_sleep_mode
-        )
+        self.vllm = vLLMState(self.model.vllm_engine, enable_sleep_mode)
         # Initialize PEFT model
         self.peft_model = cast(
             peft.peft_model.PeftModelForCausalLM,
@@ -131,3 +137,9 @@ class vLLMState:
                 await self.async_engine.wake_up()
         finally:
             await self.resume_engine()
+
+
+def free_memory() -> None:
+    for _ in range(3):
+        gc.collect()
+        torch.cuda.empty_cache()
