@@ -74,6 +74,6 @@ It has been tested with the `NousResearch/Hermes-2-Theta-Llama-3-8B` model on a 
 
 You can monitor training progress with Weights & Biases at https://wandb.ai/your-wandb-organization/agent-reinforcement-training.
 
-You should see immediate improvement in `val/reward` after one iteration.
+You should see immediate improvement in `val/reward` after one step.
 
 If you run into any issues, the training output is set to maximum verbosity. Copying the outputs such as the vLLM or torchtune logs, or copying/screenshotting the plotted packed tensors, may help me debug the issue.

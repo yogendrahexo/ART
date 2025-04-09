@@ -45,11 +45,36 @@ class Model:
         client = await self.api._get_openai_client(self, _config)
         return patch_openai(client)
 
+    async def get_step(self) -> int:
+        """
+        Get the model's current training step.
+        """
+        return await self.api._get_step(self)
+
     async def get_iteration(self) -> int:
         """
-        Get the model's current training iteration.
+        DEPRECATED: Get the model's current training iteration.
         """
-        return await self.api._get_iteration(self)
+        return await self.api._get_step(self)
+
+    async def delete_checkpoints(
+        self,
+        benchmark: str = "val/reward",
+        benchmark_smoothing: float = 1.0,
+        verbosity: Verbosity = 1,
+    ) -> None:
+        """
+        Delete all but the latest and best checkpoints.
+
+        Args:
+            benchmark: The benchmark to use to determine the best checkpoint.
+            benchmark_smoothing: Smoothing factor (0-1) that controls how much to reduce
+                variance when determining the best checkpoint. Defaults to 1.0 (no smoothing).
+            verbosity: Verbosity level.
+        """
+        await self.api._delete_checkpoints(
+            self, benchmark, benchmark_smoothing, verbosity
+        )
 
     async def clear_iterations(
         self,
@@ -58,7 +83,7 @@ class Model:
         verbosity: Verbosity = 1,
     ) -> None:
         """
-        Delete all but the latest and best iteration checkpoints.
+        DEPRECATED: Delete all but the latest and best iteration checkpoints.
 
         Args:
             benchmark: The benchmark to use to determine the best iteration.
@@ -66,7 +91,7 @@ class Model:
                 variance when determining the best iteration. Defaults to 1.0 (no smoothing).
             verbosity: Verbosity level.
         """
-        await self.api._clear_iterations(
+        await self.api._delete_checkpoints(
             self, benchmark, benchmark_smoothing, verbosity
         )
 

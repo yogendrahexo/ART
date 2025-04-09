@@ -29,8 +29,8 @@ from .pack import (
 )
 from .tokenize import tokenize_trajectory_groups
 from .checkpoints import (
-    clear_iteration_dirs,
-    get_iteration,
+    delete_checkpoints,
+    get_step,
 )
 
 
@@ -181,13 +181,13 @@ class LocalAPI:
     def _get_output_dir(self, model_name: str) -> str:
         return f"{self._path}/models/{model_name}"
 
-    async def _get_iteration(self, model: Model) -> int:
-        return self.__get_iteration(model)
+    async def _get_step(self, model: Model) -> int:
+        return self.__get_step(model)
 
-    def __get_iteration(self, model: Model) -> int:
-        return get_iteration(self._get_output_dir(model.name))
+    def __get_step(self, model: Model) -> int:
+        return get_step(self._get_output_dir(model.name))
 
-    async def _clear_iterations(
+    async def _delete_checkpoints(
         self,
         model: Model,
         benchmark: str,
@@ -196,27 +196,27 @@ class LocalAPI:
     ) -> None:
         run = self._get_wandb_run(model)
         output_dir = self._get_output_dir(model.name)
-        # Keep the latest iteration
-        iterations_to_keep = [get_iteration(output_dir)]
+        # Keep the latest step
+        steps_to_keep = [get_step(output_dir)]
         try:
             history_df = (
                 wandb.Api()
                 .run(f"{run.entity}/{run.project}/{run.id}")
                 .history()
                 .dropna(subset=[benchmark])
-                .groupby("iteration")
+                .groupby("step")
                 .mean()
                 .sort_index()
             )
-            # Keep the best iteration so far, potentially smoothing to account for variance
-            best_iteration = (
+            # Keep the best step so far, potentially smoothing to account for variance
+            best_step = (
                 history_df[benchmark].ewm(alpha=benchmark_smoothing).mean().idxmax()
             )
-            iterations_to_keep.append(best_iteration)
+            steps_to_keep.append(best_step)
         except KeyError:
             if verbosity > 1:
                 print(f'No "{benchmark}" metric found in history')
-        clear_iteration_dirs(output_dir, iterations_to_keep)
+        delete_checkpoints(output_dir, steps_to_keep)
 
     async def _get_openai_client(
         self,
@@ -248,7 +248,7 @@ class LocalAPI:
             for j, trajectory in enumerate(group):
                 if isinstance(trajectory, BaseException):
                     continue
-                directory = f"{self._get_output_dir(model.name)}/trajectories/{split}/{self.__get_iteration(model):04d}"
+                directory = f"{self._get_output_dir(model.name)}/trajectories/{split}/{self.__get_step(model):04d}"
                 os.makedirs(directory, exist_ok=True)
                 i_digits = len(str(len(trajectory_groups) - 1))
                 j_digits = len(str(len(group) - 1))
@@ -358,7 +358,7 @@ class LocalAPI:
         model: Model,
         data: dict[str, float],
         namespace: str,
-        iteration_offset: int = 0,
+        step_offset: int = 0,
     ) -> None:
         # Add namespacing if needed
         data = (
@@ -369,10 +369,8 @@ class LocalAPI:
 
         # Log the data
         self._get_wandb_run(model).log(
-            {
-                "iteration": self.__get_iteration(model) + iteration_offset,
-                **data,
-            }
+            data,
+            step=self.__get_step(model) + step_offset,
         )
 
     def _get_wandb_run(self, model: Model) -> Run:

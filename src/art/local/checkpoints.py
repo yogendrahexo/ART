@@ -2,19 +2,24 @@ import os
 import shutil
 
 
-def clear_iteration_dirs(output_dir: str, excluding: list[int]) -> None:
+def delete_checkpoints(output_dir: str, excluding: list[int]) -> None:
     for dir in os.listdir(output_dir):
         if (
             os.path.isdir(os.path.join(output_dir, dir))
             and dir.isdigit()
             and int(dir) not in excluding
         ):
-            iteration_dir = os.path.join(output_dir, dir)
-            shutil.rmtree(iteration_dir)
-            print(f"Deleted iteration directory {iteration_dir}")
+            checkpoint_dir = os.path.join(output_dir, dir)
+            shutil.rmtree(checkpoint_dir)
+            print(f"Deleted checkpoint {checkpoint_dir}")
 
 
-def get_iteration(output_dir: str) -> int:
+def get_last_checkpoint_dir(output_dir: str) -> str | None:
+    last_checkpoint_dir = os.path.join(output_dir, f"{get_step(output_dir):04d}")
+    return last_checkpoint_dir if os.path.exists(last_checkpoint_dir) else None
+
+
+def get_step(output_dir: str) -> int:
     os.makedirs(output_dir, exist_ok=True)
     return max(
         (
@@ -24,8 +29,3 @@ def get_iteration(output_dir: str) -> int:
         ),
         default=0,
     )
-
-
-def get_last_iteration_dir(output_dir: str) -> str | None:
-    last_iteration_dir = os.path.join(output_dir, f"{get_iteration(output_dir):04d}")
-    return last_iteration_dir if os.path.exists(last_iteration_dir) else None

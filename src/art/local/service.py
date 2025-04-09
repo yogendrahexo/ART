@@ -5,7 +5,7 @@ import torch
 from typing import AsyncIterator, TYPE_CHECKING
 
 from .. import types
-from .checkpoints import get_iteration, get_last_iteration_dir
+from .checkpoints import get_step, get_last_checkpoint_dir
 from ..config.model import ModelConfig
 from ..config.openai_server import get_openai_server_config, OpenAIServerConfig
 from .pack import DiskPackedTensors, packed_tensors_from_dir, PackedTensors
@@ -45,7 +45,7 @@ class ModelService:
     async def start_openai_server(self, config: OpenAIServerConfig | None) -> None:
         from .vllm import openai_server_task
 
-        lora_path = get_last_iteration_dir(self.output_dir)
+        lora_path = get_last_checkpoint_dir(self.output_dir)
         if lora_path is None:
             lora_path = f"{self.output_dir}/0000"
             self.state.trainer.save_model(lora_path)
@@ -130,12 +130,10 @@ class ModelService:
                         else:
                             yield result
             # Save the new LoRA adapter
-            iteration_dir = (
-                f"{self.output_dir}/{get_iteration(self.output_dir) + 1:04d}"
-            )
-            self.state.trainer.save_model(iteration_dir)
+            checkpoint_dir = f"{self.output_dir}/{get_step(self.output_dir) + 1:04d}"
+            self.state.trainer.save_model(checkpoint_dir)
             # Set the new LoRA adapter
-            self._set_lora(iteration_dir)
+            self._set_lora(checkpoint_dir)
 
     def _set_lora(self, lora_path: str) -> None:
         """Sets the LoRA adapter with ID 1 in the vLLM engine."""

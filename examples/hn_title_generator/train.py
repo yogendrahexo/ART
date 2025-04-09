@@ -278,7 +278,7 @@ async def main():
     openai_client = await model.openai_client()
 
     # Training Loop
-    start_iteration = await model.get_iteration()
+    start_iteration = await model.get_step()
     print(f"Starting training from global iteration {start_iteration}")
 
     data_iterator = iterate_dataset(
@@ -352,7 +352,7 @@ async def main():
             )
 
             await model.log(val_trajectories)
-            await model.clear_iterations()
+            await model.delete_checkpoints()
 
     print("Training finished.")
 

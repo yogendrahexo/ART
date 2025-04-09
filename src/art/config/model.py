@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 def get_model_config(
     base_model: "types.BaseModel", output_dir: str, config: "ModelConfig | None"
 ) -> "ModelConfig":
-    from ..local.checkpoints import get_last_iteration_dir
+    from ..local.checkpoints import get_last_checkpoint_dir
 
     if config is None:
         config = ModelConfig()
@@ -43,7 +43,7 @@ def get_model_config(
         use_async=True,
     )
     init_args.update(config.get("init_args", {}))
-    if lora_path := get_last_iteration_dir(output_dir):
+    if lora_path := get_last_checkpoint_dir(output_dir):
         init_args["model_name"] = lora_path
     peft_args = PeftArgs(
         r=8,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
