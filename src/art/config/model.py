@@ -62,7 +62,7 @@ def get_model_config(
         random_state=3407,
     )
     peft_args.update(config.get("peft_args", {}))
-    train_args = TrainArgs(
+    trainer_args = TrainerArgs(
         learning_rate=5e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
@@ -79,8 +79,10 @@ def get_model_config(
         disable_tqdm=True,
         report_to="none",
     )
-    train_args.update(config.get("train_args", {}))
-    return ModelConfig(init_args=init_args, peft_args=peft_args, train_args=train_args)
+    trainer_args.update(config.get("trainer_args", {}))
+    return ModelConfig(
+        init_args=init_args, peft_args=peft_args, trainer_args=trainer_args
+    )
 
 
 class ModelConfig(TypedDict, total=False):
@@ -95,7 +97,7 @@ class ModelConfig(TypedDict, total=False):
 
     init_args: "InitArgs"
     peft_args: "PeftArgs"
-    train_args: "TrainArgs"
+    trainer_args: "TrainerArgs"
 
 
 class InitArgs(TypedDict, total=False):
@@ -146,7 +148,7 @@ class PeftArgs(TypedDict, total=False):
     temporary_location: str
 
 
-class TrainArgs(TypedDict, total=False):
+class TrainerArgs(TypedDict, total=False):
     output_dir: str | None
     overwrite_output_dir: bool
     do_train: bool

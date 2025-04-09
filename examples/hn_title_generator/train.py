@@ -242,7 +242,7 @@ async def main():
             "peft_args": {
                 "lora_alpha": 8,
             },
-            "train_args": {
+            "trainer_args": {
                 "max_grad_norm": 0.1,
             },
         },
