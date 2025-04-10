@@ -22,12 +22,19 @@ BaseModel = Literal[
     "Qwen/Qwen2.5-72B-Instruct",
 ]
 
+class CompletionChoice(Choice):
+    # Ensure we can find completion log so we can update reward
+    completion_id: str
+
 Message = ChatCompletionMessageParam
-MessageOrChoice = Message | Choice
+MessageOrChoice = Message | CompletionChoice
 Messages = list[Message]
 MessagesAndChoices = list[MessageOrChoice]
 ToolCall = ChatCompletionMessageToolCallParam
 Tools = Iterable[ChatCompletionToolParam]
+
+
+
 
 
 class Trajectory(pydantic.BaseModel):
