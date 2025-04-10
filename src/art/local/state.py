@@ -14,7 +14,7 @@ from transformers.utils.dummy_pt_objects import (
 )
 from trl import GRPOConfig, GRPOTrainer
 from typing import AsyncGenerator, cast, TYPE_CHECKING
-import vllm
+from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.worker.worker_base import WorkerWrapperBase
 from vllm.worker.multi_step_model_runner import MultiStepModelRunner
 
@@ -27,7 +27,7 @@ nest_asyncio.apply()
 
 
 class CausallLM(PreTrainedModel, GenerationMixin):
-    vllm_engine: "vllm.AsyncLLMEngine"
+    vllm_engine: AsyncLLMEngine
 
 
 class ModelState:
@@ -91,9 +91,7 @@ class ModelState:
 
 
 class vLLMState:
-    def __init__(
-        self, async_engine: "vllm.AsyncLLMEngine", enable_sleep_mode: bool
-    ) -> None:
+    def __init__(self, async_engine: AsyncLLMEngine, enable_sleep_mode: bool) -> None:
         from .vllm import create_engine_pause_and_resume_functions, patch_allocator
 
         if enable_sleep_mode:

@@ -9,7 +9,6 @@ import torch
 from typing import Any, AsyncIterator, Callable, Coroutine, TYPE_CHECKING
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.engine.protocol import EngineClient
-from vllm.entrypoints.openai import api_server
 from vllm.entrypoints.openai.cli_args import make_arg_parser, validate_parsed_serve_args
 from vllm.lora.request import LoRARequest
 from vllm.logger import _DATE_FORMAT, _FORMAT
@@ -37,6 +36,11 @@ async def openai_server_task(
         A running asyncio task for the OpenAI-compatible server. Cancel the task
         to stop the server.
     """
+    # We must subclass ChatCompletionRequest before importing api_server
+    # or logprobs will not always be returned
+    subclass_chat_completion_request()
+    from vllm.entrypoints.openai import api_server
+
     patch_lora_request()
     patch_get_lora_tokenizer_async()
     patch_listen_for_disconnect()
@@ -87,6 +91,8 @@ async def openai_server_task(
 def _openai_server_coroutine(
     config: OpenAIServerConfig,
 ) -> Coroutine[Any, Any, None]:
+    from vllm.entrypoints.openai import api_server
+
     parser = FlexibleArgumentParser(
         description="vLLM OpenAI-Compatible RESTful API server."
     )
@@ -224,6 +230,22 @@ def patch_allocator() -> None:
 
     allocator.sleep = sleep
     allocator.wake_up = wake_up
+
+
+def subclass_chat_completion_request() -> None:
+    """
+    Subclass ChatCompletionRequest so that logprobs are always returned.
+    """
+    import vllm.entrypoints.openai.protocol
+
+    class ChatCompletionRequest(vllm.entrypoints.openai.protocol.ChatCompletionRequest):
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            super().__init__(*args, **kwargs)
+            self.logprobs = True
+            if self.top_logprobs is None:
+                self.top_logprobs = 0
+
+    vllm.entrypoints.openai.protocol.ChatCompletionRequest = ChatCompletionRequest
 
 
 def patch_lora_request() -> None:

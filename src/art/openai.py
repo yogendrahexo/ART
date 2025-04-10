@@ -14,7 +14,6 @@ from openai.types.chat.chat_completion_message_tool_call import (
 from typing import Any, Callable
 
 from .gather import get_gather_context
-from .utils import format_message
 
 
 def patch_openai(client: openai.AsyncOpenAI) -> openai.AsyncOpenAI:
@@ -27,7 +26,6 @@ def patch_openai(client: openai.AsyncOpenAI) -> openai.AsyncOpenAI:
             context.metric_divisors["prompt_tokens"] += 1
 
     async def create_patched(*args: Any, **kwargs: Any) -> ChatCompletion | AsyncStream:
-        kwargs["logprobs"] = True
         return_stream = kwargs.get("stream", False)
         context = get_gather_context()
         if context.pbar_total_completion_tokens:
