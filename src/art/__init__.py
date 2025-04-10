@@ -21,7 +21,6 @@ __all__ = [
     "gather_trajectories",
     "LocalAPI",
     "Messages",
-    "CompletionChoice",
     "MessagesAndChoices",
     "Model",
     "retry",
