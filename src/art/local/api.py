@@ -19,7 +19,8 @@ from ..config.model import get_model_config, ModelConfig
 from ..config.openai_server import OpenAIServerConfig
 from ..model import Model
 from .service import ModelService
-from ..types import BaseModel, Message, Trajectory, TuneConfig, Verbosity
+from ..trajectories import Trajectory, TrajectoryGroup
+from ..types import BaseModel, Message, TrainConfig
 from ..utils import format_message
 from .pack import (
     packed_tensors_from_tokenized_results,
@@ -67,18 +68,25 @@ class LocalAPI:
         self._tokenizers: dict[str, "PreTrainedTokenizerBase"] = {}
         self._wandb_runs: dict[str, Run] = {}
 
-    async def get_or_create_model(self, name: str, base_model: BaseModel) -> Model:
+    async def get_or_create_model(
+        self,
+        name: str,
+        base_model: BaseModel,
+        _config: ModelConfig | None = None,
+    ) -> Model:
         """
         Retrieve an existing model or create a new one.
 
         Args:
             name: A unique identifier for the model.
             base_model: The base model to start training from.
+            _config: A ModelConfig object. May be subject to breaking changes at any time.
+                Use at your own risk.
 
         Returns:
             Model: A model instance.
         """
-        return await self._get_or_create_model(name, base_model, None)
+        return await self._get_or_create_model(name, base_model, _config)
 
     async def _get_or_create_model(
         self,
@@ -135,8 +143,7 @@ class LocalAPI:
     def _get_packed_tensors(
         self,
         model: Model,
-        trajectory_groups: list[list[Trajectory | BaseException]],
-        verbosity: Verbosity,
+        trajectory_groups: list[TrajectoryGroup],
         plot_tensors: bool,
     ) -> PackedTensors | None:
         if not model.base_model in self._tokenizers:
@@ -147,10 +154,7 @@ class LocalAPI:
         tokenized_results = list(
             tokenize_trajectory_groups(
                 tokenizer,
-                [
-                    [t for t in g if isinstance(t, Trajectory)]
-                    for g in trajectory_groups
-                ],
+                trajectory_groups,
             )
         )
         if not tokenized_results:
@@ -163,16 +167,16 @@ class LocalAPI:
             tokenized_results,
             sequence_length,
             pad_token_id=tokenizer.eos_token_id,  # type: ignore
-            verbosity=verbosity,
         )
         # If all logprobs are NaN then there is no suitable data for tuning
         if np.isnan(packed_tensors["logprobs"]).all():
-            if verbosity > 0:
-                print("All log probabilities are NaN.")
+            print(
+                "There are no assistant logprobs to train on. Did you forget to include at least one Choice in Trajectory.messages_and_choices?"
+            )
             return None
         if plot_tensors:
             plot_packed_tensors(packed_tensors)
-        elif verbosity > 0:
+        else:
             print(
                 f"Packed {len(tokenized_results)} trajectories into {packed_tensors['tokens'].shape[0]} sequences of length {packed_tensors['tokens'].shape[1]}"
             )
@@ -188,11 +192,7 @@ class LocalAPI:
         return get_step(self._get_output_dir(model.name))
 
     async def _delete_checkpoints(
-        self,
-        model: Model,
-        benchmark: str,
-        benchmark_smoothing: float = 1.0,
-        verbosity: Verbosity = 1,
+        self, model: Model, benchmark: str, benchmark_smoothing: float = 1.0
     ) -> None:
         run = self._get_wandb_run(model)
         output_dir = self._get_output_dir(model.name)
@@ -214,8 +214,7 @@ class LocalAPI:
             )
             steps_to_keep.append(best_step)
         except KeyError:
-            if verbosity > 1:
-                print(f'No "{benchmark}" metric found in history')
+            print(f'No "{benchmark}" metric found in history')
         delete_checkpoints(output_dir, steps_to_keep)
 
     async def _get_openai_client(
@@ -240,7 +239,7 @@ class LocalAPI:
     async def _log(
         self,
         model: Model,
-        trajectory_groups: list[list[Trajectory | BaseException]],
+        trajectory_groups: list[TrajectoryGroup],
         split: str = "val",
     ) -> None:
         # Save logs for each trajectory
@@ -319,30 +318,30 @@ class LocalAPI:
             formatted_messages.append(format_message(message))
         return header + "\n".join(formatted_messages)
 
-    async def _tune_model(
+    async def _train_model(
         self,
         model: Model,
-        trajectory_groups: list[list[Trajectory | BaseException]],
-        config: TuneConfig,
+        trajectory_groups: list[TrajectoryGroup],
+        config: TrainConfig,
     ) -> None:
         service = await self._get_service(model)
         await self._log(model, trajectory_groups, "train")
         packed_tensors = self._get_packed_tensors(
-            model,
-            trajectory_groups,
-            config.verbosity,
-            config.plot_tensors,
+            model, trajectory_groups, plot_tensors=False
         )
         if packed_tensors is None:
-            if config.verbosity > 0:
-                print("Skipping tuning as there is no suitable data.")
+            print(
+                "Skipping tuning as there is no suitable data. "
+                "This can happen when all the trajectories in the same group "
+                "have the same reward and thus no advantage to train on."
+            )
             return
         disk_packed_tensors = packed_tensors_to_dir(
             packed_tensors, f"{self._get_output_dir(model.name)}/tensors"
         )
         results: list[dict[str, float]] = []
-        pbar = tqdm.tqdm(total=disk_packed_tensors["num_sequences"], desc="tune")
-        async for result in service.tune(disk_packed_tensors, config):
+        pbar = tqdm.tqdm(total=disk_packed_tensors["num_sequences"], desc="train")
+        async for result in service.train(disk_packed_tensors, config):
             results.append(result)
             pbar.update(1)
             pbar.set_postfix(result)

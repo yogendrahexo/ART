@@ -9,22 +9,22 @@ if os.environ.get("IMPORT_PEFT", "0") == "1":
 if os.environ.get("IMPORT_UNSLOTH", "0") == "1":
     import unsloth  # type: ignore
 
-from .gather_trajectories import gather_trajectories
+from .gather import gather_trajectories, gather_trajectory_groups
 from .model import Model
-from .types import Messages, MessagesAndChoices, Trajectory, TuneConfig
+from .trajectories import Trajectory, TrajectoryGroup
+from .types import Messages, MessagesAndChoices, TrainConfig
 from .local import LocalAPI
 from .utils import retry
 
-UnslothAPI = LocalAPI
-
 __all__ = [
     "gather_trajectories",
+    "gather_trajectory_groups",
     "LocalAPI",
     "Messages",
     "MessagesAndChoices",
     "Model",
     "retry",
+    "TrainConfig",
     "Trajectory",
-    "TuneConfig",
-    "UnslothAPI",
+    "TrajectoryGroup",
 ]

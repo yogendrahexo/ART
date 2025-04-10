@@ -274,7 +274,7 @@ async def main():
     print(f"Training data size: {len(train_data_list)}")
     print(f"Validation data size: {len(val_data_list)}")
 
-    # Get OpenAI Client from ART Model
+    # Get OpenAI Client for the ART Model
     openai_client = await model.openai_client()
 
     # Training Loop
@@ -290,9 +290,9 @@ async def main():
     )
 
     for batch_inputs, epoch, global_iteration, epoch_iteration in data_iterator:
-        train_groups = await art.gather_trajectories(
+        train_groups = await art.gather_trajectory_groups(
             (
-                (
+                art.TrajectoryGroup(
                     rollout(
                         openai_client,
                         op_client,
@@ -320,13 +320,9 @@ async def main():
             )
             continue
 
-        await model.tune(
+        await model.train(
             valid_train_groups,
-            config=art.TuneConfig(
-                lr=LEARNING_RATE,
-                sequence_length=MAX_PROMPT_LENGTH + MAX_COMPLETION_LENGTH,
-                clip_epsilon=9001,
-            ),
+            config=art.TrainConfig(learning_rate=LEARNING_RATE),
         )
 
         if global_iteration > 0 and global_iteration % EVAL_STEPS == 0:
@@ -334,21 +330,19 @@ async def main():
 
             print(f"Running validation rollouts on {len(val_data_list)} samples...")
             val_trajectories = await art.gather_trajectories(
-                [
-                    [
-                        rollout(
-                            openai_client,
-                            op_client,
-                            RUN_NAME,
-                            item["prompt"],
-                            item["row"],
-                            global_iteration,
-                            epoch,
-                        )
-                        for _ in range(1)
-                    ]
+                (
+                    rollout(
+                        openai_client,
+                        op_client,
+                        RUN_NAME,
+                        item["prompt"],
+                        item["row"],
+                        global_iteration,
+                        epoch,
+                    )
                     for item in val_data_list
-                ]
+                ),
+                pbar_desc="val",
             )
 
             await model.log(val_trajectories)
