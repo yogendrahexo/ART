@@ -9,13 +9,13 @@ async def benchmark_rollout(
     client: AsyncOpenAI,
     model: str,
     num_rollouts: int,
-    rollout: Callable[[AsyncOpenAI, int, bool], Coroutine[Any, Any, Trajectory]],
+    rollout: Callable[[AsyncOpenAI, str, int, bool], Coroutine[Any, Any, Trajectory]],
 ) -> float:
     trajectory_groups = await art.gather_trajectories(
         (rollout(client, model, i, False) for i in range(num_rollouts)),
         pbar_desc="Benchmarking rollout",
     )
-    
+
     trajectory_group_rewards = []
 
     for group in trajectory_groups:
