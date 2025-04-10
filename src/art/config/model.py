@@ -1,25 +1,24 @@
 import torch
-from typing import Literal, TYPE_CHECKING, TypedDict
+from transformers.debug_utils import DebugOption
+from transformers.training_args import OptimizerNames
+from transformers.trainer_utils import (
+    FSDPOption,
+    HubStrategy,
+    IntervalStrategy,
+    SaveStrategy,
+    SchedulerType,
+)
+from typing import TYPE_CHECKING, TypedDict
 
 
 if TYPE_CHECKING:
-    from transformers.training_args import (
-        DebugOption,
-        FSDPOption,
-        HubStrategy,
-        IntervalStrategy,
-        OptimizerNames,
-        SaveStrategy,
-        SchedulerType,
-    )
-
     from .. import types
 
 
 def get_model_config(
     base_model: "types.BaseModel", output_dir: str, config: "ModelConfig | None"
 ) -> "ModelConfig":
-    from ..unsloth.checkpoints import get_last_iteration_dir
+    from ..local.checkpoints import get_last_checkpoint_dir
 
     if config is None:
         config = ModelConfig()
@@ -44,7 +43,7 @@ def get_model_config(
         use_async=True,
     )
     init_args.update(config.get("init_args", {}))
-    if lora_path := get_last_iteration_dir(output_dir):
+    if lora_path := get_last_checkpoint_dir(output_dir):
         init_args["model_name"] = lora_path
     peft_args = PeftArgs(
         r=8,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
@@ -63,7 +62,7 @@ def get_model_config(
         random_state=3407,
     )
     peft_args.update(config.get("peft_args", {}))
-    train_args = TrainArgs(
+    trainer_args = TrainerArgs(
         learning_rate=5e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
@@ -74,13 +73,16 @@ def get_model_config(
         per_device_train_batch_size=2,
         gradient_accumulation_steps=1,  # Increase to 4 for smoother training
         num_generations=2,  # Decrease if out of memory
+        max_grad_norm=0.1,
         save_strategy="no",
         output_dir=output_dir,
         disable_tqdm=True,
         report_to="none",
     )
-    train_args.update(config.get("train_args", {}))
-    return ModelConfig(init_args=init_args, peft_args=peft_args, train_args=train_args)
+    trainer_args.update(config.get("trainer_args", {}))
+    return ModelConfig(
+        init_args=init_args, peft_args=peft_args, trainer_args=trainer_args
+    )
 
 
 class ModelConfig(TypedDict, total=False):
@@ -95,7 +97,7 @@ class ModelConfig(TypedDict, total=False):
 
     init_args: "InitArgs"
     peft_args: "PeftArgs"
-    train_args: "TrainArgs"
+    trainer_args: "TrainerArgs"
 
 
 class InitArgs(TypedDict, total=False):
@@ -146,7 +148,7 @@ class PeftArgs(TypedDict, total=False):
     temporary_location: str
 
 
-class TrainArgs(TypedDict, total=False):
+class TrainerArgs(TypedDict, total=False):
     output_dir: str | None
     overwrite_output_dir: bool
     do_train: bool
@@ -254,7 +256,6 @@ class TrainArgs(TypedDict, total=False):
     include_for_metrics: list[str]
     eval_do_concat_batches: bool
     fp16_backend: str
-    evaluation_strategy: "IntervalStrategy | str"
     push_to_hub_model_id: str | None
     push_to_hub_organization: str | None
     push_to_hub_token: str | None
@@ -267,8 +268,6 @@ class TrainArgs(TypedDict, total=False):
     torch_compile: bool
     torch_compile_backend: str | None
     torch_compile_mode: str | None
-    dispatch_batches: bool | None
-    split_batches: bool | None
     include_tokens_per_second: bool | None
     include_num_input_tokens_seen: bool | None
     neftune_noise_alpha: float | None
