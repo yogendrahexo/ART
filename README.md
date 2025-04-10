@@ -1,4 +1,4 @@
-![image](https://github.com/user-attachments/assets/42b2d869-949e-4faa-a363-5310c0b66491)
+![image](https://github.com/user-attachments/assets/9c469dd7-2541-4541-977b-58265bd95baa)
 
 # The OpenPipe Agent Reinforcement Trainer (ART)
 
