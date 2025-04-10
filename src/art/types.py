@@ -13,7 +13,6 @@ BaseModel = Literal[
     "Qwen/Qwen2.5-72B-Instruct",
 ]
 
-
 Message = ChatCompletionMessageParam
 MessageOrChoice = Message | Choice
 Messages = list[Message]
