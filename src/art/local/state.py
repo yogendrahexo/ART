@@ -149,6 +149,7 @@ class vLLMState:
                 yield
             finally:
                 free_memory()
+                await asyncio.sleep(0.1)
                 await self.async_engine.wake_up()
         finally:
             await self.resume_engine()
