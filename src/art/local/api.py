@@ -141,7 +141,7 @@ class LocalAPI:
         max_tokens = max(len(result.tokens) for result in tokenized_results)
         # Round up max_tokens to the nearest power of 2
         max_tokens = 2 ** math.ceil(math.log2(max_tokens))
-        sequence_length = max(8192, max_tokens)
+        sequence_length = max(4096, max_tokens)
         packed_tensors = packed_tensors_from_tokenized_results(
             tokenized_results,
             sequence_length,
