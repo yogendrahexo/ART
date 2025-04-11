@@ -36,6 +36,7 @@ def get_model_config(
             0.79 if enable_sleep_mode else 0.55
         ),  # Reduce if out of memory
         max_lora_rank=8,
+        enable_sleep_mode=enable_sleep_mode,
         use_async=True,
     )
     engine_args = EngineArgs(
