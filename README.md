@@ -6,7 +6,7 @@
 
 <a href="https://colab.research.google.com/github/openpipe/art/blob/notebooks/examples/2048/2048.ipynb"><img src="https://github.com/openpipe/art/raw/main/assets/Train_pill.png" height="48"></a>
 <a href="https://discord.gg/openpipe"><img src="https://github.com/openpipe/art/raw/main/assets/Discord_pill.png" height="48"></a>
-<a href="https://docs.openpipe.ai"><img src="https://github.com/openpipe/art/raw/main/assets/Documentation_pill.png" height="48"></a>
+<a href="https://openpipe.ai/blog"><img src="https://github.com/openpipe/art/raw/main/assets/Launch_pill.png" height="48"></a>
 
 ### Train free-range RL agents with minimal code changes and maximal performance!
 
@@ -46,3 +46,13 @@ This training loop runs until a specified number of inference and training itera
 ## Contributing
 
 ART is in very active development, and contributions are most welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for more information.
+
+## Credits
+
+ART stands on the shoulders of giants. While we owe many of the ideas and early experiments that led to ART's development to the open source RL community at large, we're especially grateful to the authors of the following projects:
+
+- [Unsloth](https://github.com/unslothai/unsloth)
+- [vLLM](https://github.com/vllm-project/vllm)
+- [trl](https://github.com/huggingface/trl)
+
+Finally, thank you to our partners who've helped us test ART in the wild! We're excited to see what you all build with it.
