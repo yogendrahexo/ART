@@ -95,8 +95,6 @@ def packed_tensors_from_tokenized_results(
         assistant_mask[-1].extend(result.assistant_mask)
         logprobs[-1].extend(result.logprobs)
         advantages[-1].extend([result.advantage] * len(result.token_ids))
-        # prevent the model forgetting how to stop
-        advantages[-1][-1] = 0
         weights[-1].extend([1 / sum(result.assistant_mask)] * len(result.token_ids))
         if truncate_long_results:
             token_ids[-1] = token_ids[-1][:seq_len]
