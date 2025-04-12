@@ -19,7 +19,7 @@ dependencies = [
     "typer>=0.15.2",
     "trl==0.15.2",
     "tblib>=3.0.0",
-    "litellm>=1.63.0"
+    "litellm>=1.63.0",
 ]
 
 [build-system]
