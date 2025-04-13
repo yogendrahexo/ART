@@ -20,6 +20,7 @@ class Trajectory(pydantic.BaseModel):
     reward: float
     metrics: dict[str, float] = {}
     metadata: dict[str, MetadataValue] = {}
+    logs: list[str] = []
 
     def __str__(self) -> str:
         return f"Trajectory(reward={self.reward}, metrics={self.metrics}, metadata={self.metadata})"
@@ -30,6 +31,7 @@ class Trajectory(pydantic.BaseModel):
             "metrics": self.metrics,
             "metadata": self.metadata,
             "messages": [],
+            "logs": self.logs,
         }
         for message_or_choice in self.messages_and_choices:
             trainable = isinstance(message_or_choice, Choice)
