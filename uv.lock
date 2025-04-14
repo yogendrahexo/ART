@@ -3245,7 +3245,7 @@ wheels = [
 
 [[package]]
 name = "openpipe-art"
-version = "0.1.14"
+version = "0.1.18"
 source = { editable = "." }
 dependencies = [
     { name = "bitsandbytes", marker = "sys_platform == 'linux'" },
