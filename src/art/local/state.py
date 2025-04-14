@@ -45,7 +45,9 @@ class ModelState:
         # Sticking with V0 engine for now
         os.environ["VLLM_USE_V1"] = "0"
         # We can't use expandable segments with sleep mode
-        enable_sleep_mode = config.get("init_args", {}).get("enable_sleep_mode", False)
+        enable_sleep_mode = config.get("engine_args", {}).get(
+            "enable_sleep_mode", False
+        )
         if enable_sleep_mode:
             os.environ["PYTORCH_CUDA_ALLOC_CONF"] = ""
         # Initialize Unsloth model
