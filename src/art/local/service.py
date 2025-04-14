@@ -110,7 +110,7 @@ class ModelService:
                                 if warmup
                                 else config
                             ),
-                            _config=_config if warmup else {},
+                            _config=_config,
                         )
                     )
                     # Wait for a result from the queue or for the training task to,
