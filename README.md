@@ -22,7 +22,7 @@ ART is an open-source reinforcement training library for improving LLM performan
 
 | Agent Task | Example Notebook                                                                                                | Description                     | Comparative Performance |
 | ---------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------- | ----------------------- |
-| **2048**   | [🏋️ Train your agent](https://colab.research.google.com/github/openpipe/art/blob/main/examples/2048/2048.ipynb) | Qwen 2.5 7B learns to play 2048 | [Link coming soon]      |
+| **2048**   | [🏋️ Train your agent](https://colab.research.google.com/github/openpipe/art/blob/main/examples/2048/2048.ipynb) | Qwen 2.5 3B learns to play 2048 | [Link coming soon]      |
 
 ## 🔁 Training Loop Overview
 
@@ -42,6 +42,18 @@ ART's functionality is divided into a **client** and a **server**. The OpenAI-co
    4. Inference is unblocked and the loop resumes at step 1.
 
 This training loop runs until a specified number of inference and training iterations have completed.
+
+## Supported Models
+
+ART currently supports the following models, and we plan to add more soon!
+
+- [`Qwen/Qwen2.5-0.5B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct)
+- [`Qwen/Qwen2.5-1.5B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct)
+- [`Qwen/Qwen2.5-3B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct)
+- [`Qwen/Qwen2.5-7B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct)
+- [`Qwen/Qwen2.5-14B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-14B-Instruct)
+- [`Qwen/Qwen2.5-32B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-32B-Instruct)
+- [`Qwen/Qwen2.5-72B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-72B-Instruct)
 
 ## ⚠️ Disclaimer
 
