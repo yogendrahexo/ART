@@ -347,7 +347,13 @@ class LocalAPI:
 
         # Log the data to history.jsonl
         with open(f"{self._get_output_dir(model)}/history.jsonl", "a") as f:
-            f.write(json.dumps({**data, "step": step}) + "\n")
+            f.write(
+                json.dumps(
+                    {k: v for k, v in data.items() if v == v}  # Filter out NaN values
+                    | {"step": step}
+                )
+                + "\n"
+            )
 
         # If we have a W&B run, log the data there as well
         if run := self._get_wandb_run(model):
