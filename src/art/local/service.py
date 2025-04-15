@@ -26,8 +26,8 @@ class ModelService:
     host: str
     port: int
     model_name: str
-    base_model: types.BaseModel
-    config: dev.ModelConfig
+    base_model: types.TrainableModelName
+    config: dev.InternalModelConfig
     output_dir: str
     _openai_server_task: asyncio.Task[None] | None = None
     _train_task: asyncio.Task[None] | None = None
@@ -125,9 +125,9 @@ class ModelService:
                     for task in done:
                         result = task.result()
                         # If `result` is `None`, the training task finished somehow.
-                        assert (
-                            result is not None
-                        ), "The training task should never finish."
+                        assert result is not None, (
+                            "The training task should never finish."
+                        )
                         self.results_queue.task_done()
                         if warmup:
                             from .state import free_memory

@@ -17,12 +17,14 @@ if TYPE_CHECKING:
 
 
 def get_model_config(
-    base_model: "types.BaseModel", output_dir: str, config: "ModelConfig | None"
-) -> "ModelConfig":
+    base_model: "types.TrainableModelName",
+    output_dir: str,
+    config: "InternalModelConfig | None",
+) -> "InternalModelConfig":
     from ..local.checkpoints import get_last_checkpoint_dir
 
     if config is None:
-        config = ModelConfig()
+        config = InternalModelConfig()
     enable_sleep_mode = config.get("engine_args", {}).get("enable_sleep_mode", True)
     init_args = InitArgs(
         model_name=base_model,
@@ -84,7 +86,7 @@ def get_model_config(
         report_to="none",
     )
     trainer_args.update(config.get("trainer_args", {}))
-    return ModelConfig(
+    return InternalModelConfig(
         init_args=init_args,
         engine_args=engine_args,
         peft_args=peft_args,
@@ -92,7 +94,7 @@ def get_model_config(
     )
 
 
-class ModelConfig(TypedDict, total=False):
+class InternalModelConfig(TypedDict, total=False):
     """
     Model configuration.
 

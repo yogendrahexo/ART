@@ -20,7 +20,7 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.worker.worker_base import WorkerWrapperBase
 from vllm.worker.multi_step_model_runner import MultiStepModelRunner
 
-from ..dev.model import ModelConfig
+from ..dev.model import InternalModelConfig
 
 if TYPE_CHECKING:
     from .service import TrainInputs
@@ -37,7 +37,7 @@ class ModelState:
     A class responsible for initializing and holding references to the model and related state.
     """
 
-    def __init__(self, config: ModelConfig) -> None:
+    def __init__(self, config: InternalModelConfig) -> None:
         from vllm.engine import async_llm_engine
         from vllm.worker.multi_step_model_runner import MultiStepModelRunner
 

@@ -232,22 +232,23 @@ async def rollout(
 async def main():
     # Initialize ART API and Model
     api = art.LocalAPI()
-    model = await api.get_or_create_model(
+    model = art.TrainableModel(
         name=MODEL_NAME,
         project=PROJECT,
         base_model=BASE_MODEL,
-        _config={
-            "init_args": {
-                "gpu_memory_utilization": 0.75,
-            },
-            "peft_args": {
-                "lora_alpha": 8,
-            },
-            "trainer_args": {
-                "max_grad_norm": 0.1,
-            },
-        },
+        _internal_config=art.dev.InternalModelConfig(
+            init_args=art.dev.InitArgs(
+                gpu_memory_utilization=0.75,
+            ),
+            peft_args=art.dev.PeftArgs(
+                lora_alpha=8,
+            ),
+            trainer_args=art.dev.TrainerArgs(
+                max_grad_norm=0.1,
+            ),
+        ),
     )
+    await model.register_for_training(api)
     op_client = AsyncOpenPipe(api_key=os.getenv("OPENPIPE_API_KEY"))
 
     # Load Data
@@ -276,7 +277,7 @@ async def main():
     print(f"Validation data size: {len(val_data_list)}")
 
     # Get OpenAI Client for the ART Model
-    openai_client = await model.openai_client()
+    openai_client = model.openai_client()
 
     # Training Loop
     start_step = await model.get_step()
