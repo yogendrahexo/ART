@@ -18,10 +18,10 @@ import wandb
 from wandb.sdk.wandb_run import Run
 
 from .. import dev
-from ..model import Model
+from ..model import Model, TrainableModel
 from .service import ModelService
 from ..trajectories import Trajectory, TrajectoryGroup
-from ..types import BaseModel, Message, TrainConfig
+from ..types import TrainableModelName, Message, TrainConfig
 from ..utils import format_message
 from .pack import (
     packed_tensors_from_tokenized_results,
@@ -59,42 +59,24 @@ class LocalAPI:
         self._tokenizers: dict[str, "PreTrainedTokenizerBase"] = {}
         self._wandb_runs: dict[str, Run] = {}
 
-    async def get_or_create_model(
+    async def register_for_training(
         self,
-        name: str,
-        project: str,
-        base_model: BaseModel,
-        _config: dev.ModelConfig | None = None,
-    ) -> Model:
+        model: Model,
+    ):
         """
         Retrieve an existing model or create a new one.
 
         Args:
-            name: A project-unique identifier for the model.
-            project: The project to save the model to.
-            base_model: The base model to start training from.
-            _config: A ModelConfig object. May be subject to breaking changes at any time.
-                Use at your own risk.
-
-        Returns:
-            Model: A model instance.
+            model: An art.Model instance.
         """
-        model = Model(
-            name=name,
-            project=project,
-            base_model=base_model,
-            _api=self,
-            _config=_config,
-        )
         os.makedirs(self._get_output_dir(model), exist_ok=True)
-        return model
 
-    async def _get_service(self, model: Model) -> ModelService:
+    async def _get_service(self, model: TrainableModel) -> ModelService:
         if model.name not in self._services:
             config = dev.get_model_config(
                 base_model=model.base_model,
                 output_dir=self._get_output_dir(model),
-                config=model._config,
+                config=model._internal_config,
             )
             self._services[model.name] = ModelService(
                 host="localhost",
@@ -122,7 +104,7 @@ class LocalAPI:
 
     def _get_packed_tensors(
         self,
-        model: Model,
+        model: TrainableModel,
         trajectory_groups: list[TrajectoryGroup],
         plot_tensors: bool,
     ) -> PackedTensors | None:
@@ -164,14 +146,17 @@ class LocalAPI:
     def _get_output_dir(self, model: Model) -> str:
         return f"{self._path}/{model.project}/models/{model.name}"
 
-    async def _get_step(self, model: Model) -> int:
+    async def _get_step(self, model: TrainableModel) -> int:
         return self.__get_step(model)
 
-    def __get_step(self, model: Model) -> int:
+    def __get_step(self, model: TrainableModel) -> int:
         return get_step(self._get_output_dir(model))
 
     async def _delete_checkpoints(
-        self, model: Model, benchmark: str, benchmark_smoothing: float = 1.0
+        self,
+        model: TrainableModel,
+        benchmark: str,
+        benchmark_smoothing: float = 1.0,
     ) -> None:
         output_dir = self._get_output_dir(model)
         # Keep the latest step
@@ -196,7 +181,7 @@ class LocalAPI:
 
     async def _get_openai_client(
         self,
-        model: Model,
+        model: TrainableModel,
         config: dev.OpenAIServerConfig | None,
     ) -> AsyncOpenAI:
         service = await self._get_service(model)
@@ -215,7 +200,7 @@ class LocalAPI:
 
     async def _log(
         self,
-        model: Model,
+        model: TrainableModel,
         trajectory_groups: list[TrajectoryGroup],
         split: str = "val",
     ) -> None:
@@ -297,7 +282,7 @@ class LocalAPI:
 
     async def _train_model(
         self,
-        model: Model,
+        model: TrainableModel,
         trajectory_groups: list[TrajectoryGroup],
         config: TrainConfig,
         _config: dev.TrainConfig,
@@ -332,7 +317,7 @@ class LocalAPI:
 
     def _log_data(
         self,
-        model: Model,
+        model: TrainableModel,
         data: dict[str, float],
         namespace: str,
         step_offset: int = 0,
@@ -362,7 +347,7 @@ class LocalAPI:
                 step=step,
             )
 
-    def _get_wandb_run(self, model: Model) -> Run | None:
+    def _get_wandb_run(self, model: TrainableModel) -> Run | None:
         if "WANDB_API_KEY" not in os.environ:
             return None
         if model.name not in self._wandb_runs:

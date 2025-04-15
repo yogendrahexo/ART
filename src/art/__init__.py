@@ -11,7 +11,7 @@ if os.environ.get("IMPORT_UNSLOTH", "0") == "1":
 
 from . import dev
 from .gather import gather_trajectories, gather_trajectory_groups
-from .model import Model
+from .model import Model, TrainableModel
 from .trajectories import Trajectory, TrajectoryGroup
 from .types import Messages, MessagesAndChoices, TrainConfig
 from .local import LocalAPI
@@ -25,6 +25,7 @@ __all__ = [
     "Messages",
     "MessagesAndChoices",
     "Model",
+    "TrainableModel",
     "retry",
     "TrainConfig",
     "Trajectory",

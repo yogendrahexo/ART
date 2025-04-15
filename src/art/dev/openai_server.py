@@ -6,7 +6,7 @@ from .engine import EngineArgs
 
 def get_openai_server_config(
     model_name: str,
-    base_model: types.BaseModel,
+    base_model: types.TrainableModelName,
     log_file: str,
     lora_path: str,
     config: "OpenAIServerConfig | None" = None,

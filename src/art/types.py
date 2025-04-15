@@ -3,7 +3,7 @@ from openai.types.chat.chat_completion_message_param import ChatCompletionMessag
 import pydantic
 from typing import Literal
 
-BaseModel = Literal[
+TrainableModelName = Literal[
     "Qwen/Qwen2.5-0.5B-Instruct",
     "Qwen/Qwen2.5-1.5B-Instruct",
     "Qwen/Qwen2.5-3B-Instruct",
