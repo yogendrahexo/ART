@@ -19,7 +19,7 @@ BASE_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 MAX_COMPLETION_LENGTH = 100
 MAX_PROMPT_LENGTH = 8192 - MAX_COMPLETION_LENGTH
 LEARNING_RATE = 1.2e-5
-ENTRIES_PER_ITERATION = 1
+ENTRIES_PER_STEP = 1
 EVAL_STEPS = 50
 VAL_SET_SIZE = 100
 TRAINING_DATASET_SIZE = 5000
@@ -159,7 +159,7 @@ async def rollout(
     model_name: str,
     prompt: Iterable[ChatCompletionMessageParam],
     row: Dict[str, Any],
-    global_iteration: int,
+    global_step: int,
     epoch: int,
 ) -> art.Trajectory:
     """Generates a title, validates it, scores it, and returns a trajectory."""
@@ -209,7 +209,7 @@ async def rollout(
             "metadata": {
                 "type": "art_rollout",
                 "split": row["split"],
-                "iteration": global_iteration,
+                "step": global_step,
                 "epoch": epoch,
                 "dataset_id": row["id"],
                 **metrics,
@@ -279,18 +279,18 @@ async def main():
     openai_client = await model.openai_client()
 
     # Training Loop
-    start_iteration = await model.get_step()
-    print(f"Starting training from global iteration {start_iteration}")
+    start_step = await model.get_step()
+    print(f"Starting training from global step {start_step}")
 
     data_iterator = iterate_dataset(
         dataset=train_data_list,
-        batch_size=ENTRIES_PER_ITERATION,
+        batch_size=ENTRIES_PER_STEP,
         num_epochs=NUM_EPOCHS,
-        initial_iteration=start_iteration,
+        initial_step=start_step,
         use_tqdm=True,
     )
 
-    for batch_inputs, epoch, global_iteration, epoch_iteration in data_iterator:
+    for batch_inputs, epoch, global_step, epoch_step in data_iterator:
         train_groups = await art.gather_trajectory_groups(
             (
                 art.TrajectoryGroup(
@@ -300,7 +300,7 @@ async def main():
                         MODEL_NAME,
                         bi["prompt"],
                         bi["row"],
-                        global_iteration,
+                        global_step,
                         epoch,
                     )
                     for _ in range(NUM_GENERATIONS)
@@ -317,7 +317,7 @@ async def main():
 
         if not valid_train_groups:
             print(
-                f"Warning: No valid trajectories generated for iteration {global_iteration}. Skipping tune step."
+                f"Warning: No valid trajectories generated for step {global_step}. Skipping tune step."
             )
             continue
 
@@ -326,8 +326,8 @@ async def main():
             config=art.TrainConfig(learning_rate=LEARNING_RATE),
         )
 
-        if global_iteration > 0 and global_iteration % EVAL_STEPS == 0:
-            print(f"\n--- Evaluating at Iteration {global_iteration} ---")
+        if global_step > 0 and global_step % EVAL_STEPS == 0:
+            print(f"\n--- Evaluating at Step {global_step} ---")
 
             print(f"Running validation rollouts on {len(val_data_list)} samples...")
             val_trajectories = await art.gather_trajectories(
@@ -338,7 +338,7 @@ async def main():
                         MODEL_NAME,
                         item["prompt"],
                         item["row"],
-                        global_iteration,
+                        global_step,
                         epoch,
                     )
                     for item in val_data_list
