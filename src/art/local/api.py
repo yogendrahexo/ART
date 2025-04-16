@@ -1,12 +1,9 @@
-import httpx
 import json
 import math
+from art.utils.output_dirs import get_output_dir_from_model, get_trajectories_split_dir
+from art.utils.trajectory_logging import serialize_trajectory_groups
 from mp_actors import move_to_child_process
 import numpy as np
-from openai import (
-    AsyncOpenAI,
-    DefaultAsyncHttpxClient,
-)
 import os
 import polars as pl
 import subprocess
@@ -21,7 +18,7 @@ from .. import dev
 from ..model import Model, TrainableModel
 from .service import ModelService
 from ..trajectories import Trajectory, TrajectoryGroup
-from ..types import TrainableModelName, Message, TrainConfig
+from ..types import Message, TrainConfig
 from ..utils import format_message
 from .pack import (
     packed_tensors_from_tokenized_results,
@@ -59,23 +56,26 @@ class LocalAPI:
         self._tokenizers: dict[str, "PreTrainedTokenizerBase"] = {}
         self._wandb_runs: dict[str, Run] = {}
 
-    async def register_for_training(
+    async def register(
         self,
         model: Model,
     ):
         """
-        Retrieve an existing model or create a new one.
+        Registers a model with the local API for logging and/or training.
 
         Args:
             model: An art.Model instance.
         """
-        os.makedirs(self._get_output_dir(model), exist_ok=True)
+        output_dir = get_output_dir_from_model(model)
+        os.makedirs(output_dir, exist_ok=True)
+        with open(f"{output_dir}/model.json", "w") as f:
+            json.dump(model.model_dump(), f)
 
     async def _get_service(self, model: TrainableModel) -> ModelService:
         if model.name not in self._services:
             config = dev.get_model_config(
                 base_model=model.base_model,
-                output_dir=self._get_output_dir(model),
+                output_dir=get_output_dir_from_model(model),
                 config=model._internal_config,
             )
             self._services[model.name] = ModelService(
@@ -84,7 +84,7 @@ class LocalAPI:
                 model_name=model.name,
                 base_model=model.base_model,
                 config=config,
-                output_dir=self._get_output_dir(model),
+                output_dir=get_output_dir_from_model(model),
             )
             if not self._in_process:
                 # Kill all "model-service" processes to free up GPU memory
@@ -143,14 +143,11 @@ class LocalAPI:
             )
         return packed_tensors
 
-    def _get_output_dir(self, model: Model) -> str:
-        return f"{self._path}/{model.project}/models/{model.name}"
-
     async def _get_step(self, model: TrainableModel) -> int:
         return self.__get_step(model)
 
     def __get_step(self, model: TrainableModel) -> int:
-        return get_step(self._get_output_dir(model))
+        return get_step(get_output_dir_from_model(model))
 
     async def _delete_checkpoints(
         self,
@@ -158,7 +155,7 @@ class LocalAPI:
         benchmark: str,
         benchmark_smoothing: float = 1.0,
     ) -> None:
-        output_dir = self._get_output_dir(model)
+        output_dir = get_output_dir_from_model(model)
         # Keep the latest step
         steps_to_keep = [get_step(output_dir)]
         try:
@@ -179,44 +176,38 @@ class LocalAPI:
             print(f'No "{benchmark}" metric found in history')
         delete_checkpoints(output_dir, steps_to_keep)
 
-    async def _get_openai_client(
+    async def _prepare_backend_for_training(
         self,
         model: TrainableModel,
         config: dev.OpenAIServerConfig | None,
-    ) -> AsyncOpenAI:
+    ) -> tuple[str, str]:
         service = await self._get_service(model)
         await service.start_openai_server(config=config)
         server_args = (config or {}).get("server_args", {})
-        return AsyncOpenAI(
-            base_url=f"http://{server_args.get('host', '0.0.0.0')}:{server_args.get('port', 8000)}/v1",
-            api_key=server_args.get("api_key", "default"),
-            http_client=DefaultAsyncHttpxClient(
-                timeout=httpx.Timeout(timeout=1200, connect=5.0),
-                limits=httpx.Limits(
-                    max_connections=100_000, max_keepalive_connections=100_000
-                ),
-            ),
-        )
+
+        base_url = f"http://{server_args.get('host', '0.0.0.0')}:{server_args.get('port', 8000)}/v1"
+        api_key = server_args.get("api_key", None) or "default"
+
+        return base_url, api_key
 
     async def _log(
         self,
-        model: TrainableModel,
+        model: Model,
         trajectory_groups: list[TrajectoryGroup],
         split: str = "val",
     ) -> None:
-        # Save logs for each trajectory
-        for i, group in enumerate(trajectory_groups):
-            for j, trajectory in enumerate(group):
-                if isinstance(trajectory, BaseException):
-                    continue
-                directory = f"{self._get_output_dir(model)}/trajectories/{split}/{self.__get_step(model):04d}"
-                os.makedirs(directory, exist_ok=True)
-                i_digits = len(str(len(trajectory_groups) - 1))
-                j_digits = len(str(len(group) - 1))
-                with open(
-                    f"{directory}/{i:0{i_digits}d}-{j:0{j_digits}d}.log", "w"
-                ) as f:
-                    f.write(self._trajectory_log(trajectory))
+
+        # Save logs for trajectory groups
+        parent_dir = get_trajectories_split_dir(get_output_dir_from_model(model), split)
+        os.makedirs(parent_dir, exist_ok=True)
+
+        # Get the file name for the current iteration, or default to 0 for non-trainable models
+        iteration = self.__get_step(model) if isinstance(model, TrainableModel) else 0
+        file_name = f"{iteration:04d}.yaml"
+
+        # Write the logs to the file
+        with open(f"{parent_dir}/{file_name}", "w") as f:
+            f.write(serialize_trajectory_groups(trajectory_groups))
 
         # Collect all metrics (including reward) across all trajectories
         all_metrics: dict[str, list[float]] = {"reward": [], "exception_rate": []}
@@ -300,7 +291,7 @@ class LocalAPI:
             )
             return
         disk_packed_tensors = packed_tensors_to_dir(
-            packed_tensors, f"{self._get_output_dir(model)}/tensors"
+            packed_tensors, f"{get_output_dir_from_model(model)}/tensors"
         )
         results: list[dict[str, float]] = []
         pbar = tqdm.tqdm(total=disk_packed_tensors["num_sequences"], desc="train")
@@ -331,7 +322,7 @@ class LocalAPI:
         step = self.__get_step(model) + step_offset
 
         # Log the data to history.jsonl
-        with open(f"{self._get_output_dir(model)}/history.jsonl", "a") as f:
+        with open(f"{get_output_dir_from_model(model)}/history.jsonl", "a") as f:
             f.write(
                 json.dumps(
                     {k: v for k, v in data.items() if v == v}  # Filter out NaN values
