@@ -55,7 +55,7 @@ def dict_to_trajectory_group(dict: dict[str, Any]) -> TrajectoryGroup:
     return TrajectoryGroup(
         trajectories=[dict_to_trajectory(trajectory) for trajectory in dict["trajectories"]],
         metadata=dict["metadata"],
-        exceptions=dict["exceptions"],
+        exceptions=[],
     )
 
 def dict_to_trajectory(dict: dict[str, Any]) -> Trajectory:
