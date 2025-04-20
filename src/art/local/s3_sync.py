@@ -19,6 +19,7 @@ async def s3_sync(
     *,
     profile: Optional[str] = None,
     verbose: bool = False,
+    delete: bool = False,
 ) -> None:
     """Synchronise *source* and *destination* using the AWS CLI.
 
@@ -42,7 +43,11 @@ async def s3_sync(
     cmd: list[str] = ["aws"]
     if profile:
         cmd += ["--profile", profile]
-    cmd += ["s3", "sync", "--delete", source, destination]
+
+    cmd += ["s3", "sync"]
+    if delete:
+        cmd.append("--delete")
+    cmd += [source, destination]
 
     # Suppress output unless verbose mode is requested.
     stdout = None if verbose else DEVNULL
