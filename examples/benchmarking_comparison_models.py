@@ -1,12 +1,10 @@
 import art
 import asyncio
 from pydantic import BaseModel
-import litellm
 import re
-from litellm.types.utils import Choices
-from art.utils.litellm_utils import convert_litellm_choice_to_openai
 from art.utils import iterate_dataset
-
+from openai.types.chat import ChatCompletion
+import os
 
 PROJECT_NAME = "benchmarking-comparison-models"
 
@@ -38,8 +36,10 @@ test_scenarios = [
 # and reward functions will use this config to adjust their behavior, but to ART
 # itself it's completely opaque.
 class MyConfig(BaseModel):
-    litellm_model_name: str | None = None
     use_thinking: bool = False
+    # When using LightLLM / LiteLLM gateways you may want to override the
+    # underlying model name that is sent to the backend.
+    litellm_model_name: str | None = None
 
 
 # Dummy reward function that simply checks whether the model's answer is
@@ -81,6 +81,8 @@ async def benchmark_model(model: art.Model):
 # using the `use_thinking` flag to change the prompt slightly.
 async def rollout(model: art.Model, scenario: MyScenarioSpec) -> art.Trajectory:
     assert isinstance(model.config, MyConfig)
+
+    openai_client = model.openai_client()
     messages = []
     if model.config.use_thinking:
         messages.append(
@@ -94,21 +96,15 @@ async def rollout(model: art.Model, scenario: MyScenarioSpec) -> art.Trajectory:
         {"role": "user", "content": f"What is {scenario.input_1} + {scenario.input_2}?"}
     )
 
-    response = await litellm.acompletion(
-        model=model.config.litellm_model_name or f"hosted_vllm/{model.name}",
+    response = await openai_client.chat.completions.create(
+        model=model.get_inference_name(),
         messages=messages,
-        # We can use the built-in LiteLLM caching so if we re-run the same
-        # rollout for our comparison models we don't need to run inference
-        # again. However, for our trainable models it's very important we don't
-        # cache so we get diversity in our rollouts.
-        caching=not model.trainable,
-        api_key=model.api_key,
-        base_url=model.base_url,
     )
-    choice: Choices = response.choices[0]  # type: ignore
-    response_text: str = choice.message.content  # type: ignore
+    choice = response.choices[0]
+    response_text = choice.message.content
+    assert response_text is not None
 
-    messages.append(convert_litellm_choice_to_openai(choice))
+    messages.append(choice)
 
     # Your rollout function should always return a Trajectory object.
     return art.Trajectory(
@@ -120,7 +116,7 @@ async def rollout(model: art.Model, scenario: MyScenarioSpec) -> art.Trajectory:
 async def train_model(model: art.TrainableModel):
     train_iterator = iterate_dataset(
         training_scenarios,
-        batch_size=4,
+        groups_per_step=4,
         initial_step=await model.get_step(),
     )
 
@@ -146,27 +142,33 @@ async def train_model(model: art.TrainableModel):
 async def main():
     # Here we define a list of prompted comparison models we want to assess
     # performance for.
-    gpt_4o = art.Model(
-        name="gpt-4o",
+    gpt_4_1 = art.Model(
+        name="gpt-4.1",
         project=PROJECT_NAME,
-        config=MyConfig(litellm_model_name="openai/gpt-4o"),
+        inference_base_url="https://api.openai.com/v1/",
+        inference_api_key=os.getenv("OPENAI_API_KEY"),
     )
-    gpt_4o_thinking = gpt_4o.model_copy(deep=True)
-    assert isinstance(gpt_4o_thinking.config, MyConfig)
-    gpt_4o_thinking.name = "gpt-4o-thinking"
 
-    gemini_flash = gpt_4o.model_copy(deep=True)
-    assert isinstance(gemini_flash.config, MyConfig)
-    gemini_flash.name = "gemini-flash-1.5"
-    gemini_flash.config.litellm_model_name = "gemini/gemini-flash-1.5"
+    # We'll create a second GPT-4.1 variant that uses CoT reasoning
+    gpt_4_1_thinking = gpt_4_1.model_copy(deep=True)
+    gpt_4_1_thinking.name = "gpt-4.1-thinking"
+    assert isinstance(gpt_4_1_thinking.config, MyConfig)
+    gpt_4_1_thinking.config.use_thinking = True
+
+    gemini_flash = gpt_4_1.model_copy(deep=True)
+    gemini_flash.name = "gemini-flash-2.5"
+    gemini_flash.inference_base_url = "https://openrouter.ai/api/v1"
+    gemini_flash.inference_api_key = os.getenv("OPENROUTER_API_KEY")
+    gemini_flash.inference_model_name = "gemini/gemini-flash-2.5-flash-preview"
 
     gemini_flash_thinking = gemini_flash.model_copy(deep=True)
+    gemini_flash_thinking.name = "gemini-flash-2.5-thinking"
     assert isinstance(gemini_flash_thinking.config, MyConfig)
-    gemini_flash_thinking.name = "gemini-flash-1.5-thinking"
+    gemini_flash_thinking.config.use_thinking = True
 
     prompted_models: list[art.Model] = [
-        gpt_4o,
-        gpt_4o_thinking,
+        gpt_4_1,
+        gpt_4_1_thinking,
         gemini_flash,
         gemini_flash_thinking,
     ]
@@ -174,7 +176,7 @@ async def main():
     # We also can define the models we want to train.
     qwen = art.TrainableModel(
         name="qwen-2.5-14b-instruct",
-        project="my-project",
+        project=PROJECT_NAME,
         base_model="Qwen/Qwen2.5-14B-Instruct",
         config=MyConfig(),
     )
