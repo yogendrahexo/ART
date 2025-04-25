@@ -12,7 +12,6 @@ importlib.reload(art_e.evaluate.charts)
 import polars as pl
 from art_e.evaluate.load_trajectories import load_trajectories
 from art_e.evaluate.charts import comparison_models_bar_chart, training_progress_chart
-from art_e.evaluate.save_figure_for_blog import save_figure_for_blog
 
 df = await load_trajectories(".art/email_agent")  # type: ignore
 
@@ -151,3 +150,83 @@ fig3.savefig(
 print("Chart generation and conversion finished.")
 
 # %%
+# --- Create Bar Chart with All Prompted Models ---
+
+fig_all_models = comparison_models_bar_chart(
+    df,
+    split="val",
+    metric_name="answer_correct",
+    models=[
+        ("deepseek-r1", "DS\nR1"),
+        ("gpt-4o", "GPT-4o"),
+        ("gpt-4.1", "GPT-4.1"),
+        ("gemini-2.0-flash", "Gemini\n2.0 Flash"),
+        ("gemini-2.5-pro", "Gemini\n2.5 Pro"),
+        ("o4-mini", "o4-mini"),
+        ("o3", "o3"),
+    ],
+    title="Percentage of Questions Answered Correctly (Prompted Models)",
+)
+
+# Save the new chart
+fig_all_models.savefig(
+    "/Users/kyle/proj/openpipe-web/public/blog-images/art-e-accuracy-comparison-prompted-models.svg"
+)
+
+# %%
+
+fig = training_progress_chart(
+    df.filter(pl.col("step").ne(592)),
+    "val",
+    "num_turns",
+    models=[
+        ("email-agent-008", "ART·E"),
+        ("gpt-4.1", "GPT-4.1"),
+        "o3",
+        ("o4-mini", "o4-mini"),
+        ("gemini-2.5-pro", "Gemini 2.5 Pro"),
+    ],
+    title="Average Number of Turns to Answer Question",
+    y_label="Number of turns",
+    legend_loc="upper right",
+)
+
+fig.savefig(
+    "/Users/kyle/proj/openpipe-web/public/blog-images/art-e-num-turns-training-progress.svg"
+)
+
+# %%
+
+df = df.with_columns(
+    (
+        pl.col("metric_attempted_answer").cast(bool)
+        & ~pl.col("metric_answer_correct").cast(bool)
+    ).alias("metric_wrong_answer")
+)
+
+fig = training_progress_chart(
+    df.filter(pl.col("step").ne(592)),
+    "val",
+    "wrong_answer",
+    models=[
+        ("email-agent-008", "ART·E"),
+        ("gpt-4.1", "GPT-4.1"),
+        "o3",
+        ("o4-mini", "o4-mini"),
+        ("gemini-2.5-pro", "Gemini 2.5 Pro"),
+    ],
+    title="Fraction of Answers Hallucinated",
+    x_label="Training Step",
+    legend_loc="upper right",
+)
+
+fig.tight_layout(pad=1.0)
+fig.savefig(
+    "/Users/kyle/proj/openpipe-web/public/blog-images/art-e-wrong-answer-training-progress.svg",
+    bbox_inches="tight",
+)
+
+# %%
+
+fi
+# df.columns

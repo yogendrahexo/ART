@@ -79,6 +79,11 @@ agent_013.config.training_config.num_epochs = 4
 agent_013.config.training_config.trajectories_per_group = 4
 agent_013.config.training_config.groups_per_step = 24
 
+agent_014 = agent_008.model_copy(deep=True)
+agent_014.name = "email-agent-014"
+assert isinstance(agent_014.config, ProjectPolicyConfig)
+agent_014.config.stupid_simple_reward_fn = True
+
 
 async def run_training(model: art.TrainableModel):
     generate_database()
@@ -176,6 +181,8 @@ if __name__ == "__main__":
         config = agent_012
     elif training_config == "013":
         config = agent_013
+    elif training_config == "014":
+        config = agent_014
     else:
         raise ValueError(f"Invalid RUN_ID: {training_config}")
 

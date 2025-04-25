@@ -13,6 +13,7 @@ def training_progress_chart(
     x_label: str | None = None,
     y_label: str | None = None,
     perfect_score: float | None = None,
+    legend_loc: str | None = "lower right",
 ):
     """Plot and save a line chart of *metric_name* over training *step* for every model.
 
@@ -46,6 +47,9 @@ def training_progress_chart(
         If provided, draws a horizontal reference line at this *y*‑value and
         annotates it with the text "Perfect score" on the left‑hand side of
         the plot.  The reference line is excluded from the legend.
+    legend_loc : str | None, optional
+        Location of the legend, passed directly to `matplotlib.pyplot.legend`.
+        Defaults to ``"lower right"``.
 
     Returns
     -------
@@ -280,24 +284,14 @@ def training_progress_chart(
         labels=ordered_labels,
         frameon=True,
         facecolor="white",
-        loc="lower right",
+        loc=legend_loc,
         borderaxespad=0.5,
     )
 
     # Remove the top and right spines for a cleaner presentation
     sns.despine()
 
-    # ------------------------------------------------------------------
-    # Output handling (save + return) - Saving is now handled externally
-    # ------------------------------------------------------------------
-    # Removed saving logic:
-    # save_path = Path(save_to)
-    # if save_path.suffix == "":
-    #     # Default to PNG if no extension given
-    #     save_path = save_path.with_suffix(".png")
-    # os.makedirs(save_path.parent, exist_ok=True)
-    # fig.savefig(save_path, dpi=300, bbox_inches="tight")
-
+    fig.tight_layout(pad=1.0)
     return fig
 
 
@@ -550,7 +544,7 @@ def comparison_models_bar_chart(
 
     if title is None:
         title = f"{split}/{metric_name}"
-    ax.set_title(title, pad=10)
+    ax.set_title(title, pad=15)
 
     # Clean up remaining spines
     ax.spines["top"].set_visible(False)

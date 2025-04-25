@@ -86,3 +86,11 @@ df.filter(pl.col("step") == 0).filter(pl.col("split") == "val").filter(
 df.filter(pl.col("step") == 0).filter(pl.col("split") == "val").filter(
     pl.col("metric_answer_correct") == 0
 ).group_by("metadata_scenario_id").count().sort("count", descending=True)
+
+# %%
+df.filter(pl.col("model") == "email-agent-008").filter(
+    pl.col("split") == "val"
+).group_by("step").agg(pl.col("metric_answer_correct").mean().alias("avg_score")).sort(
+    "step"
+)
+# %%

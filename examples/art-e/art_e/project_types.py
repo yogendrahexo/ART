@@ -17,5 +17,6 @@ class ProjectPolicyConfig(BaseModel):
     log_to_openpipe: bool = False
     litellm_model_name: str | None = None
     use_tools: bool = True
+    stupid_simple_reward_fn: bool = False
 
     training_config: TrainingConfig | None = None

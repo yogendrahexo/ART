@@ -90,7 +90,14 @@ def main():
     uv sync
     """
 
-    run_script = 'echo "Running training script..."\nuv run python art_e/train.py'
+    run_script = """
+    uv remove openpipe-art
+    uv add --editable ~/ART
+    uv add awscli
+
+    echo "Running training script..."
+    uv run python art_e/train.py
+    """
 
     # Base env skeleton matching the original YAML (values will be filled from env file)
     base_envs = {
@@ -132,7 +139,7 @@ def main():
     task.set_resources(sky.Resources(accelerators=acc_dict))
 
     # File mounts
-    task.set_file_mounts({"~/ART": "../ART"})
+    task.set_file_mounts({"~/ART": "../.."})
 
     # --- Prepare environment variables ---
     envs: Dict[str, str] = load_env_file(args.env_file)

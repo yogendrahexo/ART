@@ -64,10 +64,14 @@ class FinalRubric:
         return {k: int(v) for k, v in asdict(self).items()}
 
 
-def reward_and_metrics(
+def calculate_reward(
     policy_config: ProjectPolicyConfig, rubric: FinalRubric, traj: Trajectory
-) -> tuple[float, dict]:
-    metrics = rubric.to_metrics()
+) -> float:
+    # As an ablation, let's try the simplest possible reward function: just give
+    # 1 point for a correct answer, and 0 for anything else. Otherwise, we'll do something
+    # more complex.
+    if policy_config.stupid_simple_reward_fn:
+        return float(rubric.answer_correct)
 
     # Note: make sure all possible partial rewards always sum to less than 0.5.
     partial_rewards = 0
@@ -78,21 +82,21 @@ def reward_and_metrics(
 
     # Formatting error: reward will be -2 to -1
     if rubric.cant_parse_tool_call:
-        return -2 + partial_rewards, metrics
+        return -2 + partial_rewards
 
     if rubric.bad_tool_call_name:
-        return -1.9 + partial_rewards, metrics
+        return -1.9 + partial_rewards
 
     if rubric.bad_tool_call_args:
-        return -1.8 + partial_rewards, metrics
+        return -1.8 + partial_rewards
 
     # No formatting error, but wrong answer: reward will be -1 to 0
     if rubric.attempted_answer and not rubric.answer_correct:
-        return -1 + partial_rewards, metrics
+        return -1 + partial_rewards
 
     # Returned no answer at all: reward will be 0 to 1
     if rubric.returned_i_dont_know or rubric.ran_out_of_turns:
-        return 0 + partial_rewards, metrics
+        return 0 + partial_rewards
 
     # Answer is correct: reward will be 1 to 2
     if rubric.answer_correct:
@@ -106,7 +110,7 @@ def reward_and_metrics(
 
         # Extra credit for being faster (taking fewer turns).
         reward += 0.1 * (1 - rubric.num_turns / policy_config.max_turns)
-        return reward, metrics
+        return reward
 
     traj.logs.append(f"Rubric: {rubric}")
     traj.logs.append("Rubric not handled properly")
@@ -373,9 +377,9 @@ async def rollout(
                 rubric.bad_tool_call_name = True
                 break
 
-    reward, metrics = reward_and_metrics(model.config, rubric, traj)
+    reward = calculate_reward(model.config, rubric, traj)
     traj.reward = reward
-    traj.metrics = metrics
+    traj.metrics = rubric.to_metrics()
     rollout_end_time = datetime.now()  # Record end time
     # Compute duration in seconds and add to metrics
     duration_seconds = (rollout_end_time - rollout_start_time).total_seconds()
