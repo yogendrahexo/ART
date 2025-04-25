@@ -3,28 +3,27 @@ import asyncio
 from pydantic import BaseModel
 import re
 from art.utils import iterate_dataset
-from openai.types.chat import ChatCompletion
 import os
 
 PROJECT_NAME = "benchmarking-comparison-models"
 
 
 # This is a project-specific definition of a scenario you might use for training
-class MyScenarioSpec(BaseModel):
+class MyTask(BaseModel):
     input_1: int
     input_2: int
     output: int
 
 
-training_scenarios = [
-    MyScenarioSpec(input_1=1, input_2=2, output=3),
-    MyScenarioSpec(input_1=2, input_2=3, output=5),
-    MyScenarioSpec(input_1=3, input_2=4, output=7),
+training_tasks = [
+    MyTask(input_1=1, input_2=2, output=3),
+    MyTask(input_1=2, input_2=3, output=5),
+    MyTask(input_1=3, input_2=4, output=7),
 ]
 
-test_scenarios = [
-    MyScenarioSpec(input_1=4, input_2=5, output=9),
-    MyScenarioSpec(input_1=5, input_2=6, output=11),
+test_tasks = [
+    MyTask(input_1=4, input_2=5, output=9),
+    MyTask(input_1=5, input_2=6, output=11),
 ]
 
 
@@ -44,7 +43,7 @@ class MyConfig(BaseModel):
 
 # Dummy reward function that simply checks whether the model's answer is
 # correct. It supports both thinking and non-thinking models.
-def reward(config: MyConfig, scenario: MyScenarioSpec, response: str):
+def reward(config: MyConfig, scenario: MyTask, response: str):
     if config.use_thinking:
         answer = re.search(r"<answer>(.*?)</answer>", response, re.DOTALL)
         if answer is None:
@@ -61,7 +60,7 @@ def reward(config: MyConfig, scenario: MyScenarioSpec, response: str):
 # We can use it to benchmark both trainable and prompted models.
 async def benchmark_model(model: art.Model):
     trajectories = await art.gather_trajectories(
-        (rollout(model, scenario) for scenario in test_scenarios),
+        (rollout(model, scenario) for scenario in test_tasks),
         pbar_desc="benchmark",
         max_exceptions=100,
     )
@@ -79,7 +78,7 @@ async def benchmark_model(model: art.Model):
 
 # In this case we have a very simple rollout function, but you can see how we're
 # using the `use_thinking` flag to change the prompt slightly.
-async def rollout(model: art.Model, scenario: MyScenarioSpec) -> art.Trajectory:
+async def rollout(model: art.Model, scenario: MyTask) -> art.Trajectory:
     assert isinstance(model.config, MyConfig)
 
     openai_client = model.openai_client()
@@ -115,7 +114,7 @@ async def rollout(model: art.Model, scenario: MyScenarioSpec) -> art.Trajectory:
 
 async def train_model(model: art.TrainableModel):
     train_iterator = iterate_dataset(
-        training_scenarios,
+        training_tasks,
         groups_per_step=4,
         initial_step=await model.get_step(),
     )
@@ -192,17 +191,16 @@ async def main():
     # We need to register all our models with the local API so they're
     # available for training and logging.
     api = art.LocalAPI()
-    for model in train_models + prompted_models:
-        await model.register(api)
+    await asyncio.gather(
+        *[model.register(api) for model in train_models + prompted_models]
+    )
 
     # For prompted models, we can benchmark them right away.
-    for model in prompted_models:
-        await benchmark_model(model)
+    await asyncio.gather(*[benchmark_model(model) for model in prompted_models])
 
     # For trainable models, we need to train them. Benchmarking will happen
     # automatically throughout training.
-    for model in train_models:
-        await train_model(model)
+    await asyncio.gather(*[train_model(model) for model in train_models])
 
 
 if __name__ == "__main__":

@@ -12,57 +12,43 @@ from openai import (
 )
 import httpx
 
-from openai import OpenAI
-
-client = OpenAI()
-
-client.base_url
-
 if TYPE_CHECKING:
     from .local.api import LocalAPI
 
-# ---------------------------------------------------------------------------
-# Inference configuration (new API)
-# ---------------------------------------------------------------------------
-#
-# Historically ART stored inference connection information inside an
-# `InferenceConfig` object that lived on each `art.Model`.  After some user
-# feedback we found that this extra layer of indirection was confusing and made
-# it harder to grok a model at a glance.  From now on the three relevant pieces
-# of information live directly on the model instance:
-#
-#     inference_api_key   – The API key used to authenticate with the
-#                           OpenAI-compatible inference endpoint.
-#     inference_base_url  – The base URL (ending in `/v1`) of the endpoint.
-#     inference_model_name – (optional) If provided, this model name will be
-#                           sent to the endpoint instead of `Model.name`.
-#
-# You can now instantiate a prompted model like so:
-#
-#     model = art.Model(
-#         name="gpt-4.1",
-#         project="my-project",
-#         inference_api_key=os.getenv("OPENAI_API_KEY"),
-#         inference_base_url="https://api.openai.com/v1/",
-#     )
-#
-# Or, if you're pointing at OpenRouter:
-#
-#     model = art.Model(
-#         name="gemini-2.5-pro",
-#         project="my-project",
-#         inference_api_key=os.getenv("OPENROUTER_API_KEY"),
-#         inference_base_url="https://openrouter.ai/api/v1",
-#         inference_model_name="google/gemini-2.5-pro-preview-03-25",
-#     )
-#
-# For trainable (`art.TrainableModel`) models these values will be populated
-# automatically by `model.register(api)` so you generally don't need to think
-# about them.
-# ---------------------------------------------------------------------------
-
 
 class Model(BaseModel):
+    """
+    A model is an object that can be passed to your `rollout` function, and used
+    to log completions. Additionally, a `TrainableModel`, which is a subclass of
+    `Model`, can be used to train a model.
+
+    The `Model` abstraction is useful for comparing prompted model performance
+    to the performance of your trained models.
+
+    You can instantiate a prompted model like so:
+
+    ```python model = art.Model(
+        name="gpt-4.1", project="my-project",
+        inference_api_key=os.getenv("OPENAI_API_KEY"),
+        inference_base_url="https://api.openai.com/v1/",
+    )
+    ```
+
+    Or, if you're pointing at OpenRouter:
+
+    ```python model = art.Model(
+        name="gemini-2.5-pro", project="my-project",
+        inference_api_key=os.getenv("OPENROUTER_API_KEY"),
+        inference_base_url="https://openrouter.ai/api/v1",
+        inference_model_name="google/gemini-2.5-pro-preview-03-25",
+    )
+    ```
+
+    For trainable (`art.TrainableModel`) models the inference values will be
+    populated automatically by `model.register(api)` so you generally don't need
+    to think about them.
+    """
+
     name: str
     project: str
 
@@ -80,6 +66,7 @@ class Model(BaseModel):
     _api: Optional["LocalAPI"] = None
     _s3_bucket: str | None = None
     _s3_prefix: str | None = None
+    _openai_client: AsyncOpenAI | None = None
 
     def api(self) -> "LocalAPI":
         if self._api is None:
@@ -103,10 +90,18 @@ class Model(BaseModel):
     def openai_client(
         self,
     ) -> AsyncOpenAI:
+        if self._openai_client is not None:
+            return self._openai_client
+
         if self.inference_api_key is None or self.inference_base_url is None:
-            raise ValueError(
-                "OpenAI client not yet available. You must call `model.register()` first."
-            )
+            if isinstance(self, TrainableModel):
+                raise ValueError(
+                    "OpenAI client not yet available on this trainable model. You must call `model.register()` first."
+                )
+            else:
+                raise ValueError(
+                    "In order to create an OpenAI client you must provide an `inference_api_key` and `inference_base_url`."
+                )
         openai_client = AsyncOpenAI(
             base_url=self.inference_base_url,
             api_key=self.inference_api_key,
@@ -118,7 +113,9 @@ class Model(BaseModel):
             ),
         )
         patch_openai(openai_client)
-        return openai_client
+        self._openai_client = openai_client
+
+        return self._openai_client
 
     # ------------------------------------------------------------------
     # Inference name helpers
