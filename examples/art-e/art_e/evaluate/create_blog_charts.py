@@ -13,7 +13,13 @@ import polars as pl
 from art_e.evaluate.load_trajectories import load_trajectories
 from art_e.evaluate.charts import comparison_models_bar_chart, training_progress_chart
 
-df = await load_trajectories(".art/email_agent")  # type: ignore
+# await load_trajectories.bust_cache()
+df = await load_trajectories(
+    ".art/email_agent",
+    # models=["gpt-4.1", "gemini-2.5-pro", "o4-mini", "o3", "email-agent-014"],
+)  # type: ignore
+
+df = df.filter(pl.col("step").lt(510))
 
 # Create the first chart (bar chart)
 fig1 = comparison_models_bar_chart(
@@ -225,8 +231,3 @@ fig.savefig(
     "/Users/kyle/proj/openpipe-web/public/blog-images/art-e-wrong-answer-training-progress.svg",
     bbox_inches="tight",
 )
-
-# %%
-
-fi
-# df.columns
