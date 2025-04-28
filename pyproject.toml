@@ -1,6 +1,6 @@
 [project]
 name = "openpipe-art"
-version = "0.1.25"
+version = "0.2.0"
 description = "The OpenPipe Agent Reinforcement Training (ART) library"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,6 +23,9 @@ dependencies = [
     "polars>=1.26.0",
     "awscli>=1.38.1",
 ]
+
+[project.scripts]
+art = "art.cli:app"
 
 [build-system]
 requires = ["hatchling"]
@@ -47,6 +50,7 @@ dev-dependencies = [
     "polars>=1.26.0",
     "skypilot[aws,cudo,do,fluidstack,gcp,lambda,paperspace,runpod]>=0.8.0",
     "hatch>=1.14.1",
+    "semver>=3.0.4",
 ]
 override-dependencies = [
     "bitsandbytes; sys_platform == 'linux'",

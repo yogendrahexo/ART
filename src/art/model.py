@@ -2,6 +2,7 @@ from openai import AsyncOpenAI
 from typing import cast, Iterable, TYPE_CHECKING, Optional
 
 from . import dev
+from .api import API
 from .openai import patch_openai
 from .trajectories import Trajectory, TrajectoryGroup
 from .types import TrainConfig
@@ -13,7 +14,7 @@ from openai import (
 import httpx
 
 if TYPE_CHECKING:
-    from .local.api import LocalAPI
+    from .api import API
 
 
 class Model(BaseModel):
@@ -56,26 +57,25 @@ class Model(BaseModel):
 
     # --- Inference connection information (populated automatically for
     #     TrainableModel or set manually for prompted / comparison models) ---
-
     inference_api_key: str | None = None
     inference_base_url: str | None = None
     # If set, this will be used instead of `self.name` when calling the
     # inference endpoint.
     inference_model_name: str | None = None
 
-    _api: Optional["LocalAPI"] = None
+    _api: Optional["API"] = None
     _s3_bucket: str | None = None
     _s3_prefix: str | None = None
     _openai_client: AsyncOpenAI | None = None
 
-    def api(self) -> "LocalAPI":
+    def api(self) -> "API":
         if self._api is None:
             raise ValueError(
                 "Model is not registered with the API. You must call `model.register()` first."
             )
         return self._api
 
-    async def register(self, api: "LocalAPI") -> None:
+    async def register(self, api: "API") -> None:
         if self.config is not None:
             try:
                 self.config.model_dump_json()
@@ -169,7 +169,7 @@ class TrainableModel(Model):
 
     async def register(
         self,
-        api: "LocalAPI",
+        api: "API",
         _openai_client_config: dev.OpenAIServerConfig | None = None,
     ) -> None:
         await super().register(api)
@@ -199,7 +199,9 @@ class TrainableModel(Model):
             best_checkpoint_metric: The metric to use to determine the best checkpoint.
                 Defaults to "val/reward".
         """
-        await self.api()._delete_checkpoints(self, best_checkpoint_metric)
+        await self.api()._delete_checkpoints(
+            self, best_checkpoint_metric, benchmark_smoothing=1.0
+        )
 
     async def train(
         self,
@@ -216,6 +218,7 @@ class TrainableModel(Model):
             _config: Additional configuration that is subject to change and
                 not yet part of the public API. Use at your own risk.
         """
-        await self.api()._train_model(
+        async for _ in self.api()._train_model(
             self, list(trajectory_groups), config, _config or {}
-        )
+        ):
+            pass
