@@ -122,13 +122,18 @@ async def load_trajectories(
                         metric_cols.update(prepped_metrics.keys())
                         metadata_cols.update(prepped_metadata.keys())
                         messages = []
-                        for message in traj.get("messages_and_choices", []):
-                            if "message" in message:
-                                messages.append(
-                                    {**message["message"], "trainable": True}
-                                )
-                            else:
-                                messages.append({**message, "trainable": False})
+                        if "messages" in traj:
+                            messages = traj["messages"]
+                        elif "messages_and_choices" in traj:
+                            for message in traj.get("messages_and_choices", []):
+                                if "message" in message:
+                                    messages.append(
+                                        {**message["message"], "trainable": True}
+                                    )
+                                else:
+                                    messages.append({**message, "trainable": False})
+                        else:
+                            raise ValueError(f"No messages found in trajectory {traj}")
 
                         row: dict[str, object] = {
                             "model": model_name,

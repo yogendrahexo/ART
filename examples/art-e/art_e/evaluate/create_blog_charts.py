@@ -4,6 +4,7 @@ import importlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import json
 
 import art_e.evaluate.charts
 
@@ -16,7 +17,17 @@ from art_e.evaluate.charts import comparison_models_bar_chart, training_progress
 # await load_trajectories.bust_cache()
 df = await load_trajectories(
     ".art/email_agent",
-    # models=["gpt-4.1", "gemini-2.5-pro", "o4-mini", "o3", "email-agent-014"],
+    models=[
+        "email-agent-008",
+        "email-agent-014",
+        "gpt-4.1",
+        "gemini-2.5-pro",
+        "o4-mini",
+        "o3",
+        "deepseek-r1",
+        "gpt-4o",
+        "gemini-2.0-flash",
+    ],
 )  # type: ignore
 
 df = df.filter(pl.col("step").lt(510))
@@ -231,3 +242,79 @@ fig.savefig(
     "/Users/kyle/proj/openpipe-web/public/blog-images/art-e-wrong-answer-training-progress.svg",
     bbox_inches="tight",
 )
+
+# %%
+
+# --- Export Example Trajectories ---
+
+# Reload data if needed, or use the existing df if it contains all necessary models/steps
+# It might be safer to reload with the specific models needed if the initial load was limited
+# Ensure 'email-agent-014' and 'email-agent-008' are loaded
+# df = await load_trajectories(".art/email_agent", models=["o3", "o4-mini", "email-agent-008", "email-agent-014"])
+
+target_scenario_ids = [str(id) for id in [300, 34, 128, 383]]
+
+# Define the filtering conditions
+conditions = (
+    ((pl.col("model") == "email-agent-014") & (pl.col("step") == 0))
+    | ((pl.col("model") == "o3") & (pl.col("step") == 0))
+    | ((pl.col("model") == "o4-mini") & (pl.col("step") == 0))
+    | ((pl.col("model") == "email-agent-008") & (pl.col("step") == 505))
+)
+
+# Filter the DataFrame
+filtered_df = df.filter(
+    pl.col("split").eq("val")
+    & pl.col("metadata_scenario_id").is_in(target_scenario_ids)
+    & conditions
+)
+
+# Define pretty model names mapping
+pretty_model_names = {
+    "o3": "o3",
+    "o4-mini": "o4-mini",
+    "email-agent-008": "ART·E",
+    "email-agent-014": "Qwen 2.5 14B",
+}
+
+# Prepare the nested dictionary
+exported_trajectories = {}
+
+for row in filtered_df.to_dicts():
+    scenario_id = row["metadata_scenario_id"]
+    model_raw = row["model"]
+    pretty_name = pretty_model_names[model_raw]
+
+    if scenario_id not in exported_trajectories:
+        exported_trajectories[scenario_id] = {}
+
+    exported_trajectories[scenario_id][pretty_name] = {
+        "messages": row["messages"],
+        "tools": row.get("tools", None),
+    }
+
+# Export to JSON
+output_path = "/Users/kyle/proj/ART/examples/art-e/exported_trajectories.json"
+with open(output_path, "w") as f:
+    json.dump(exported_trajectories, f, indent=2)
+
+print(f"Exported example trajectories to {output_path}")
+
+# %%
+
+
+# df.filter(pl.col("split").eq("val")).group_by("metadata_scenario_id").first()
+
+
+for row in (
+    df.filter(pl.col("messages").list.len() > 1)
+    .filter(pl.col("split").eq("val"))
+    .group_by("metadata_scenario_id")
+    .first()
+    .to_dicts()
+):
+    print(f"{row['metadata_scenario_id']}: {row['messages'][1]['content']}")
+
+# %%
+
+df.filter(pl.col("split").eq("val")).group_by("metadata_scenario_id").first()

@@ -2,6 +2,8 @@
 
 ## Project Overview
 
+You can find a full write-up of this project in [this post on the OpenPipe blog](https://openpipe.ai/blog/art-e-mail-agent).
+
 This project trains models using reinforcement learning (RL) to search through email datasets and answer user queries. The goal is to create agents that could potentially integrate with email providers (like a Gmail plugin), allowing users to ask questions like "what time does my wife's flight arrive on Friday" or "what are the next steps I committed to for project X" and receive accurate answers based on email content.
 
 ## Features
