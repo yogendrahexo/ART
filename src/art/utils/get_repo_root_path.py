@@ -9,4 +9,4 @@ def get_repo_root_path() -> str:
             current_dir = os.path.dirname(current_dir)
         return current_dir
     except Exception:
-        return "./.art"
+        return "."
