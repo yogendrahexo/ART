@@ -51,24 +51,13 @@ ART should work with most vLLM/HuggingFace-transformers compatible causal langua
 
 ## 🤝 Contributing
 
-ART is in very active development, and contributions are most welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for more information.
-
-## 🙏 Credits
-
-ART stands on the shoulders of giants. While we owe many of the ideas and early experiments that led to ART's development to the open source RL community at large, we're especially grateful to the authors of the following projects:
-
-- [Unsloth](https://github.com/unslothai/unsloth)
-- [vLLM](https://github.com/vllm-project/vllm)
-- [trl](https://github.com/huggingface/trl)
-- [SkyPilot](https://github.com/skypilot-org/skypilot)
-
-Finally, thank you to our partners who've helped us test ART in the wild! We're excited to see what you all build with it.
+ART is in active development, and contributions are most welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for more information.
 
 ## Citation
 
 ```bibtex
 @misc{hilton2025art,
-  author = {Brad Hilton and Kyle Corbitt and David Corbitt and Saumya Gandhi and Bohdan Kovalenskyi and Angky William and Andie Jones},
+  author = {Brad Hilton and Kyle Corbitt and David Corbitt and Saumya Gandhi and Angky William and Bohdan Kovalenskyi and Andie Jones},
   title = {ART: Agent Reinforcement Trainer},
   year = {2025},
   publisher = {GitHub},
@@ -80,3 +69,14 @@ Finally, thank you to our partners who've helped us test ART in the wild! We're 
 ## License
 
 This repository's source code is available under the [Apache-2.0 License](LICENSE).
+
+## 🙏 Credits
+
+ART stands on the shoulders of giants. While we owe many of the ideas and early experiments that led to ART's development to the open source RL community at large, we're especially grateful to the authors of the following projects:
+
+- [Unsloth](https://github.com/unslothai/unsloth)
+- [vLLM](https://github.com/vllm-project/vllm)
+- [trl](https://github.com/huggingface/trl)
+- [SkyPilot](https://github.com/skypilot-org/skypilot)
+
+Finally, thank you to our partners who've helped us test ART in the wild! We're excited to see what you all build with it.
