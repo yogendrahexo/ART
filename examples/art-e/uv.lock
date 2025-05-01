@@ -2868,7 +2868,7 @@ wheels = [
 
 [[package]]
 name = "openpipe-art"
-version = "0.1.25"
+version = "0.2.0"
 source = { editable = "../../" }
 dependencies = [
     { name = "awscli" },
@@ -2920,6 +2920,7 @@ dev = [
     { name = "openpipe", specifier = ">=4.49.0" },
     { name = "panza", git = "https://github.com/corbt/panza.git" },
     { name = "polars", specifier = ">=1.26.0" },
+    { name = "semver", specifier = ">=3.0.4" },
     { name = "skypilot", extras = ["aws", "cudo", "do", "fluidstack", "gcp", "lambda", "paperspace", "runpod"], specifier = ">=0.8.0" },
 ]
 

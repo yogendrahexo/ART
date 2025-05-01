@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import json
+import os
 
 import art_e.evaluate.charts
 
@@ -13,6 +14,10 @@ importlib.reload(art_e.evaluate.charts)
 import polars as pl
 from art_e.evaluate.load_trajectories import load_trajectories
 from art_e.evaluate.charts import comparison_models_bar_chart, training_progress_chart
+
+# Define and create the temporary directory early
+TMP_DIR = "/tmp/art-e"
+os.makedirs(TMP_DIR, exist_ok=True)
 
 # await load_trajectories.bust_cache()
 df = await load_trajectories(
@@ -51,6 +56,25 @@ fig1 = comparison_models_bar_chart(
 fig1.savefig(
     "/Users/kyle/proj/openpipe-web/public/blog-images/art-e-accuracy-comparison.svg"
 )
+# Save PNG copy to tmp dir
+fig1.savefig(os.path.join(TMP_DIR, "art-e-accuracy-comparison.png"))
+
+comparison_models_bar_chart(
+    df,
+    split="val",
+    metric_name="answer_correct",
+    models=[
+        ("gpt-4.1", "GPT-4.1"),
+        ("gemini-2.5-pro", "Gemini\n2.5 Pro"),
+        # ("gemini-2.0-flash", "Gemini\n2.0 Flash"),
+        ("o4-mini", "o4-mini"),
+        "o3",
+        ("email-agent-008", "ART·E\n(Qwen 2.5 14B)"),
+    ],
+    title="Percentage of Questions Answered Correctly",
+    figsize=(4, 4),
+).savefig("/tmp/art-e/art-e-accuracy-comparison-small.png")
+
 
 # Create the second chart (line chart)
 fig2 = training_progress_chart(
@@ -71,6 +95,8 @@ fig2 = training_progress_chart(
 fig2.savefig(
     "/Users/kyle/proj/openpipe-web/public/blog-images/art-e-accuracy-training-progress.svg"
 )
+# Save PNG copy to tmp dir
+fig2.savefig(os.path.join(TMP_DIR, "art-e-accuracy-training-progress.png"))
 
 # %%
 # --- Create Latency and Cost Charts ---
@@ -93,76 +119,128 @@ model_colors = {"o4-mini": GREY, "o3": GREY, "ART·E": ORANGE}
 bar_colors = [model_colors[model] for model in models_cost_latency]
 
 
-fig3, axes = plt.subplots(1, 2, figsize=(8, 3.5))  # Adjusted figsize slightly
+def plot_latency_chart(ax, models, values, colors):
+    """Plots the latency bar chart onto the given Axes."""
+    x_pos = np.arange(len(models))
+    bar_width = 0.6
+    bars_latency = ax.bar(x_pos, values, width=bar_width, color=colors)
+    ax.set_title("Full-Run Latency (Seconds)", pad=15)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(models, rotation=0, ha="center")
+    ax.spines["left"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.set_yticks([])
+    ax.grid(False)
 
-# Latency Chart
-ax_latency = axes[0]
-x_pos = np.arange(len(models_cost_latency))
-bar_width = 0.6
-
-bars_latency = ax_latency.bar(x_pos, latency_values, width=bar_width, color=bar_colors)
-ax_latency.set_title("Full-Run Latency (Seconds)", pad=15)
-ax_latency.set_xticks(x_pos)
-ax_latency.set_xticklabels(models_cost_latency, rotation=0, ha="center")
-ax_latency.spines["left"].set_visible(False)
-ax_latency.spines["top"].set_visible(False)
-ax_latency.spines["right"].set_visible(False)
-ax_latency.set_yticks([])
-ax_latency.grid(False)
-
-# Add latency value labels
-max_latency = max(latency_values)
-for bar in bars_latency:
-    yval = bar.get_height()
-    ax_latency.text(
-        bar.get_x() + bar.get_width() / 2.0,
-        yval + max_latency * 0.02,  # Position label slightly above bar
-        f"{yval:.1f}s",
-        ha="center",
-        va="bottom",
-        fontweight="bold",
-    )
+    # Add latency value labels
+    max_latency = max(values) if values else 0
+    for bar in bars_latency:
+        yval = bar.get_height()
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            yval + max_latency * 0.02,  # Position label slightly above bar
+            f"{yval:.1f}s",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
+    return ax
 
 
-# Cost Chart
-ax_cost = axes[1]
-bars_cost = ax_cost.bar(x_pos, cost_values, width=bar_width, color=bar_colors)
-ax_cost.set_title("Cost per 1K Runs", pad=15)
-ax_cost.set_xticks(x_pos)
-ax_cost.set_xticklabels(models_cost_latency, rotation=0, ha="center")
-ax_cost.spines["left"].set_visible(False)
-ax_cost.spines["top"].set_visible(False)
-ax_cost.spines["right"].set_visible(False)
-ax_cost.set_yticks([])
-ax_cost.grid(False)
+def plot_cost_chart(ax, models, values, colors):
+    """Plots the cost bar chart onto the given Axes."""
+    x_pos = np.arange(len(models))
+    bar_width = 0.6
+    bars_cost = ax.bar(x_pos, values, width=bar_width, color=colors)
+    ax.set_title("Cost per 1K Runs", pad=15)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(models, rotation=0, ha="center")
+    ax.spines["left"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.set_yticks([])
+    ax.grid(False)
 
-# Add cost value labels
-max_cost = max(cost_values)
-for bar in bars_cost:
-    yval = bar.get_height()
-    ax_cost.text(
-        bar.get_x() + bar.get_width() / 2.0,
-        yval + max_cost * 0.02,  # Position label slightly above bar
-        f"${yval:.2f}",
-        ha="center",
-        va="bottom",
-        fontweight="bold",
-    )
+    # Add cost value labels
+    max_cost = max(values) if values else 0
+    for bar in bars_cost:
+        yval = bar.get_height()
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            yval + max_cost * 0.02,  # Position label slightly above bar
+            f"${yval:.2f}",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
+    return ax
 
-# Bold the 'ART·E' label on both axes
-for ax in axes:
+
+def bold_arte_label(ax):
+    """Bolds the 'ART·E' label on the x-axis."""
     labels = ax.get_xticklabels()
     for label in labels:
         if label.get_text() == "ART·E":
             label.set_fontweight("bold")
     ax.set_xticklabels(labels)
 
-plt.tight_layout(pad=2.0)  # Add padding between plots and title
-# save_figure_for_blog(fig3, "art-e-cost-latency-comparison")
 
-fig3.savefig(
+# --- Create and Save Combined Chart ---
+fig_combined, axes_combined = plt.subplots(
+    1, 2, figsize=(8, 3.5)
+)  # Adjusted figsize slightly
+
+ax_latency_combined = plot_latency_chart(
+    axes_combined[0], models_cost_latency, latency_values, bar_colors
+)
+ax_cost_combined = plot_cost_chart(
+    axes_combined[1], models_cost_latency, cost_values, bar_colors
+)
+
+# Bold the 'ART·E' label on both axes of the combined plot
+bold_arte_label(ax_latency_combined)
+bold_arte_label(ax_cost_combined)
+
+plt.tight_layout(pad=2.0)  # Add padding between plots and title
+# save_figure_for_blog(fig_combined, "art-e-cost-latency-comparison") # If using a helper
+
+combined_save_path = (
     "/Users/kyle/proj/openpipe-web/public/blog-images/art-e-cost-latency-comparison.svg"
 )
+fig_combined.savefig(combined_save_path)
+# Save PNG copy to tmp dir
+fig_combined.savefig(os.path.join(TMP_DIR, "art-e-cost-latency-comparison.png"))
+print(f"Saved combined cost/latency chart to {combined_save_path}")
+# plt.close(fig_combined) # Close figure if not needed later
+
+
+# --- Create and Save Separate Charts ---
+# TMP_DIR = "/tmp/art-e" # Moved to top
+# os.makedirs(TMP_DIR, exist_ok=True) # Moved to top
+
+# Create and save separate latency chart
+fig_latency, ax_latency_single = plt.subplots(
+    figsize=(4.5, 3.8)
+)  # Slightly adjusted size
+plot_latency_chart(ax_latency_single, models_cost_latency, latency_values, bar_colors)
+bold_arte_label(ax_latency_single)
+fig_latency.tight_layout(pad=1.5)
+latency_save_path = os.path.join(TMP_DIR, "art-e-latency-comparison.png")
+fig_latency.savefig(latency_save_path)
+print(f"Saved separate latency chart to {latency_save_path}")
+plt.close(fig_latency)
+
+# Create and save separate cost chart
+fig_cost, ax_cost_single = plt.subplots(figsize=(4.5, 3.8))  # Slightly adjusted size
+plot_cost_chart(ax_cost_single, models_cost_latency, cost_values, bar_colors)
+bold_arte_label(ax_cost_single)
+fig_cost.tight_layout(pad=1.5)
+cost_save_path = os.path.join(TMP_DIR, "art-e-cost-comparison.png")
+fig_cost.savefig(cost_save_path)
+print(f"Saved separate cost chart to {cost_save_path}")
+plt.close(fig_cost)
+
 
 print("Chart generation and conversion finished.")
 
@@ -189,6 +267,10 @@ fig_all_models = comparison_models_bar_chart(
 fig_all_models.savefig(
     "/Users/kyle/proj/openpipe-web/public/blog-images/art-e-accuracy-comparison-prompted-models.svg"
 )
+# Save PNG copy to tmp dir
+fig_all_models.savefig(
+    os.path.join(TMP_DIR, "art-e-accuracy-comparison-prompted-models.png")
+)
 
 # %%
 
@@ -211,6 +293,8 @@ fig = training_progress_chart(
 fig.savefig(
     "/Users/kyle/proj/openpipe-web/public/blog-images/art-e-num-turns-training-progress.svg"
 )
+# Save PNG copy to tmp dir
+fig.savefig(os.path.join(TMP_DIR, "art-e-num-turns-training-progress.png"))
 
 # %%
 
@@ -240,6 +324,11 @@ fig = training_progress_chart(
 fig.tight_layout(pad=1.0)
 fig.savefig(
     "/Users/kyle/proj/openpipe-web/public/blog-images/art-e-wrong-answer-training-progress.svg",
+    bbox_inches="tight",
+)
+# Save PNG copy to tmp dir
+fig.savefig(
+    os.path.join(TMP_DIR, "art-e-wrong-answer-training-progress.png"),
     bbox_inches="tight",
 )
 

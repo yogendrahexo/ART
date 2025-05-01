@@ -14,6 +14,7 @@ def training_progress_chart(
     y_label: str | None = None,
     perfect_score: float | None = None,
     legend_loc: str | None = "lower right",
+    figsize: tuple[float, float] | None = None,
 ):
     """Plot and save a line chart of *metric_name* over training *step* for every model.
 
@@ -50,6 +51,9 @@ def training_progress_chart(
     legend_loc : str | None, optional
         Location of the legend, passed directly to `matplotlib.pyplot.legend`.
         Defaults to ``"lower right"``.
+    figsize : tuple[float, float] | None, optional
+        Figure size in inches (width, height). If *None* (default), uses
+        ``(6, 4)``.
 
     Returns
     -------
@@ -142,7 +146,7 @@ def training_progress_chart(
 
     # Use a clean theme without background grid lines
     sns.set_theme(style="ticks")
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=figsize if figsize is not None else (6, 4))
 
     # Explicitly remove grid lines that might be enabled by default
     ax.grid(False)
@@ -303,6 +307,7 @@ def comparison_models_bar_chart(
     title: str | None = None,
     y_label: str | None = None,
     perfect_score: float | None = None,
+    figsize: tuple[float, float] | None = None,
 ):
     """Create a bar chart visualising *metric_name* for all *models* at the
     **first** and **last** available training step.
@@ -333,6 +338,9 @@ def comparison_models_bar_chart(
     perfect_score : float | None, optional
         If provided, draws a horizontal reference line at this *y*‑value and
         annotates it with the text "Perfect score".
+    figsize : tuple[float, float] | None, optional
+        Figure size in inches (width, height). If *None* (default), uses
+        ``(6, 4)``.
 
     Returns
     -------
@@ -434,7 +442,7 @@ def comparison_models_bar_chart(
     # Plotting
     # ------------------------------------------------------------------
     sns.set_theme(style="ticks")
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=figsize if figsize is not None else (6, 4))
     ax.grid(False)
 
     trained_set = {m for m, b, imp in model_stats if imp != 0}
