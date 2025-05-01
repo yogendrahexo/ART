@@ -45,7 +45,7 @@ ART's functionality is divided into a **client** and a **server**. The OpenAI-co
 
 This training loop runs until a specified number of inference and training iterations have completed.
 
-## Supported Models
+## 🧩 Supported Models
 
 ART should work with most vLLM/HuggingFace-transformers compatible causal language models, or at least the ones supported by [Unsloth](https://docs.unsloth.ai/get-started/all-our-models). Gemma 3 does not appear to be supported for the time being. If any other model isn't working for you, please let us know on [Discord](https://discord.gg/zbBHRUpwf4) or open an issue on [GitHub](https://github.com/openpipe/art/issues)!
 
@@ -53,7 +53,7 @@ ART should work with most vLLM/HuggingFace-transformers compatible causal langua
 
 ART is in active development, and contributions are most welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for more information.
 
-## Citation
+## 📖 Citation
 
 ```bibtex
 @misc{hilton2025art,
@@ -66,7 +66,7 @@ ART is in active development, and contributions are most welcome! Please see the
 }
 ```
 
-## License
+## ⚖️ License
 
 This repository's source code is available under the [Apache-2.0 License](LICENSE).
 
