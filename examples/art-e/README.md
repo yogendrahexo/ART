@@ -44,7 +44,7 @@ To generate training data, the system:
 ```bash
 # Clone repository
 git clone https://github.com/OpenPipe/ART
-cd ART/examples/art-e
+cd ART/examples/jarvis-mail
 
 # Install package
 uv sync
