@@ -37,7 +37,6 @@ from .tokenize import tokenize_trajectory_groups
 from .checkpoints import (
     delete_checkpoints,
     get_step,
-    get_last_checkpoint_dir,
 )
 from art.utils.s3 import pull_model_from_s3, push_model_to_s3
 
@@ -339,19 +338,18 @@ class LocalBackend(Backend):
         return self._wandb_runs[model.name]
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # Experimental support for S3
     # ------------------------------------------------------------------
 
     async def _experimental_pull_from_s3(
         self,
-        model: Model,
-        *,
+        model: TrainableModel,
         s3_bucket: str | None = None,
         prefix: str | None = None,
         verbose: bool = False,
         delete: bool = False,
     ) -> None:
-        """Download the model directory from S3 into local Backend storage. Right now this can be used to pull trajectory logs for processing."""
+        """Download the model directory from S3 into local Backend storage. Right now this can be used to pull trajectory logs for processing or model checkpoints."""
         await pull_model_from_s3(
             model_name=model.name,
             project=model.project,
@@ -364,8 +362,7 @@ class LocalBackend(Backend):
 
     async def _experimental_push_to_s3(
         self,
-        model: Model,
-        *,
+        model: TrainableModel,
         s3_bucket: str | None = None,
         prefix: str | None = None,
         verbose: bool = False,
