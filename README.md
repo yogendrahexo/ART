@@ -26,6 +26,8 @@ ART is an open-source reinforcement training library for improving LLM performan
 | **Temporal Clue** | [🏋️ Train agent](https://colab.research.google.com/github/openpipe/art/blob/main/examples/temporal_clue/temporal-clue.ipynb) | Qwen 2.5 7B learns to solve Temporal Clue | [Link coming soon]                                                                                                                                                                                                                           |
 | **Tic Tac Toe**   | [🏋️ Train agent](https://colab.research.google.com/github/openpipe/art/blob/main/examples/tic_tac_toe/tic-tac-toe.ipynb)     | Qwen 2.5 3B learns to play Tic Tac Toe    | <img src="https://github.com/openpipe/art/raw/main/assets/benchmarks/tic-tac-toe-local/accuracy-training-progress.svg" height="72"> [benchmarks](https://github.com/openpipe/art/blob/main/examples/tic_tac_toe/benchmark_tic_tac_toe.ipynb) |
 
+| **Codenames**     | [🏋️ Train agent](https://colab.research.google.com/github/openpipe/art/blob/add_codenames_nb/examples/codenames/Codenames_RL.ipynb)     | Qwen 2.5 3B learns to play Codenames    | <img src="https://github.com/openpipe/art/raw/add_codenames_nb/assets/benchmarks/codenames/win_rate_over_time.png" height="72"> [benchmarks](https://github.com/openpipe/art/blob/add_codenames_nb/examples/codenames/Codenames_RL.ipynb) |
+
 ## 🤖 ART•E Agent
 
 Curious about how to use ART for a real-world task? Check out the [ART•E Agent](https://openpipe.ai/blog/art-e-mail-agent) blog post, where we detail how we trained Qwen 2.5 14B to beat o3 at email retrieval!
