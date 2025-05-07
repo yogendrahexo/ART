@@ -54,6 +54,7 @@ class Model(BaseModel):
     project: str
 
     config: BaseModel | None = None
+    trainable: bool = False
 
     # --- Inference connection information (populated automatically for
     #     TrainableModel or set manually for prompted / comparison models) ---

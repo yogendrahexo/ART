@@ -64,9 +64,8 @@ class Backend:
             timeout=600,
         )
         response.raise_for_status()
-        [base_url, api_key] = tuple(response.json())
-
-        return [base_url, api_key]
+        base_url, api_key = tuple(response.json())
+        return base_url, api_key
 
     async def _log(
         self,
