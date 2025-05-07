@@ -7,6 +7,7 @@ from .types import Messages, MessagesAndChoices, Tools
 import time
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+from datetime import datetime
 
 
 MetadataValue = float | int | str | bool | None
@@ -25,14 +26,14 @@ class Trajectory(pydantic.BaseModel):
     metrics: dict[str, float | int | bool] = {}
     metadata: dict[str, MetadataValue] = {}
     logs: list[str] = []
-    start_time: float = pydantic.Field(default_factory=time.monotonic, exclude=True)
+    start_time: datetime = pydantic.Field(default_factory=datetime.now, exclude=True)
 
     def __init__(self, **data: Any):
         super().__init__(**data)
-        self.start_time = time.monotonic()
+        self.start_time = datetime.now()
 
     def finish(self) -> "Trajectory":
-        duration = time.monotonic() - self.start_time
+        duration = (datetime.now() - self.start_time).total_seconds()
         self.metrics["duration"] = duration
         return self
 
