@@ -80,6 +80,7 @@ class Backend:
                 "trajectory_groups": [tg.model_dump() for tg in trajectory_groups],
                 "split": split,
             },
+            timeout=None,
         )
         response.raise_for_status()
 
