@@ -32,7 +32,7 @@ async def rollout(model: art.TrainableModel, prompt: str) -> art.Trajectory:
     return art.Trajectory(messages_and_choices=[*messages, choice], reward=reward)
 
 async def main():
-    with open("dev/qwen3/prompts.json", "r") as f:
+    with open("dev/new_models/prompts.json", "r") as f:
         prompts = json.load(f)
     print(prompts)
 
