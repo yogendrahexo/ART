@@ -54,8 +54,6 @@ dev-dependencies = [
 ]
 override-dependencies = [
     "bitsandbytes; sys_platform == 'linux'",
-    "unsloth==2025.5.1 ; sys_platform == 'linux'",
-    "unsloth-zoo==2025.5.1 ; sys_platform == 'linux'",
     "xformers; sys_platform == 'linux'",
 ]
 
