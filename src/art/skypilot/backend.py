@@ -177,7 +177,9 @@ class SkyPilotBackend(Backend):
         try:
             await to_thread_typed(
                 lambda: sky.launch(
-                    task=task, cluster_name=self._cluster_name, retry_until_up=True
+                    task=task,
+                    cluster_name=self._cluster_name,
+                    retry_until_up=True,
                 )
             )
         except Exception as e:
