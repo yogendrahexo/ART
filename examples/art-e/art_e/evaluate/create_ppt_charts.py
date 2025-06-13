@@ -7,7 +7,7 @@ import os
 import asyncio
 
 import polars as pl
-from art_e.evaluate.load_trajectories import load_trajectories
+from load_trajectories import load_trajectories
 
 plt.rcParams.update(
     {
@@ -673,7 +673,7 @@ fig2.savefig(os.path.join(TMP_DIR, "art-e-accuracy-training-progress.png"))
 
 models_cost_latency = ["o3", "o4-mini", "Qwen 2.5 14B\n+RL"]
 latency_values = [5.6, 3.4, 1.1]
-cost_values = [55.19, 7.88, 0.85]
+cost_values = [11.04, 7.88, 0.85]
 
 ORANGE = "#e67a30"
 GREY = "#e0dcd5"
