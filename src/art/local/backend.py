@@ -24,6 +24,8 @@ from tqdm import auto as tqdm
 from typing import AsyncIterator, cast
 import wandb
 from wandb.sdk.wandb_run import Run
+import weave
+from weave.trace.weave_client import WeaveClient
 
 from .. import dev
 from ..backend import Backend
@@ -69,6 +71,7 @@ class LocalBackend(Backend):
         self._services: dict[str, ModelService] = {}
         self._tokenizers: dict[str, "PreTrainedTokenizerBase"] = {}
         self._wandb_runs: dict[str, Run] = {}
+        self._weave_clients: dict[str, WeaveClient] = {}
 
     def __enter__(self):
         return self
@@ -100,6 +103,10 @@ class LocalBackend(Backend):
         with open(f"{output_dir}/model.json", "w") as f:
             json.dump(model.model_dump(), f)
         
+        # Initialize wandb and weave early if this is a trainable model
+        if isinstance(model, TrainableModel) and "WANDB_API_KEY" in os.environ:
+            _ = self._get_wandb_run(model)
+
         # Initialize wandb and weave early if this is a trainable model
         if isinstance(model, TrainableModel) and "WANDB_API_KEY" in os.environ:
             _ = self._get_wandb_run(model)
@@ -390,7 +397,11 @@ class LocalBackend(Backend):
                 resume="allow",
             )
             self._wandb_runs[model.name] = run
-            print(f"Wandb run initialized! You can view it at {run.url}")
+            os.environ["WEAVE_PRINT_CALL_LINK"] = os.getenv(
+                "WEAVE_PRINT_CALL_LINK", "False"
+            )
+            os.environ["WEAVE_LOG_LEVEL"] = os.getenv("WEAVE_LOG_LEVEL", "CRITICAL")
+            self._weave_clients[model.name] = weave.init(model.project)
         return self._wandb_runs[model.name]
 
     # ------------------------------------------------------------------
