@@ -21,9 +21,13 @@ from datetime import datetime
 from art_e.project_types import ProjectPolicyConfig
 import textwrap
 from tenacity import retry, stop_after_attempt
+import weave
+import logging
 
 litellm.cache = Cache(type=LiteLLMCacheType.DISK)
 # litellm._turn_on_debug()
+logging.getLogger("weave.trace.op").setLevel(logging.WARNING)
+
 
 # Initialize OpenPipe client (ensure OPENPIPE_API_KEY is in your .env)
 if os.getenv("OPENPIPE_API_KEY"):
@@ -185,15 +189,19 @@ async def determine_if_answer_is_correct(answer: str, query: SyntheticQuery) -> 
     return response.choices[0].message.content.strip().lower().startswith("t")  # type: ignore
 
 
-# @retry(stop=stop_after_attempt(3))
-@limit_concurrency(10, derive_key=lambda model, scenario, **kwargs: model.name)
+class ProjectTrajectory(Trajectory):
+    generated_answer: str | None = None
+
+
+@retry(stop=stop_after_attempt(3))
+@weave.op()
 async def rollout(
     model: art.Model[ProjectPolicyConfig],
     scenario: SyntheticQuery,
-) -> Trajectory:
+) -> ProjectTrajectory:
     rollout_start_time = datetime.now()
     rubric = FinalRubric()
-    traj = Trajectory(
+    traj = ProjectTrajectory(
         messages_and_choices=[],
         reward=0,
         metadata={"email_inbox": scenario.inbox_address, "scenario_id": scenario.id},
@@ -413,7 +421,9 @@ async def rollout(
         except Exception as e:
             print(f"Error reporting to OpenPipe: {e}")
 
-    return traj.finish()
+    traj.finish()
+    traj.generated_answer = final_answer
+    return traj
 
 
 if __name__ == "__main__":
