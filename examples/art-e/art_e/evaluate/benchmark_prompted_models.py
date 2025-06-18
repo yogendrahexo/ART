@@ -15,13 +15,10 @@ load_dotenv()
 generate_database()
 
 MODELS_TO_BENCHMARK = [
-    ("gpt-4o", "openai/gpt-4o", True),
-    ("gpt-4.1", "openai/gpt-4.1", True),
-    ("o4-mini", "openai/o4-mini", True),
-    ("o3", "openai/o3", True),
-    ("gemini-2.0-flash", "gemini/gemini-2.0-flash", False),
-    ("gemini-2.5-pro", "gemini/gemini-2.5-pro-preview-03-25", False),
-    ("deepseek-r1", "together_ai/deepseek-ai/DeepSeek-R1", False),
+    ("gpt-4o", "openai/gpt-4o"),
+    ("gpt-4.1", "openai/gpt-4.1"),
+    ("o4-mini", "openai/o4-mini"),
+    ("o3", "openai/o3"),
 ]
 
 TEST_SET_ENTRIES = 100
@@ -30,13 +27,11 @@ TEST_SET_ENTRIES = 100
 async def main():
     backend = LocalBackend()
     models = []
-    for model_name, model_id, use_tools in MODELS_TO_BENCHMARK:
+    for model_name, model_id in MODELS_TO_BENCHMARK:
         model = art.Model(
             name=model_name.split("/")[-1],
             project="email_agent",
-            config=ProjectPolicyConfig(
-                litellm_model_name=model_id, use_tools=use_tools
-            ),
+            config=ProjectPolicyConfig(litellm_model_name=model_id),
         )
         await model.register(backend)
         models.append(model)

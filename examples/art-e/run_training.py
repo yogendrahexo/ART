@@ -46,12 +46,10 @@ models["006"].name = "email-agent-006"
 
 models["007"] = models["005"].model_copy(deep=True)
 models["007"].name = "email-agent-007"
-models["007"].config.use_tools = True
 
 models["008"] = models["005"].model_copy(deep=True)
 models["008"].name = "email-agent-008"
 assert models["008"].config.training_config is not None
-models["008"].config.use_tools = True
 models["008"].config.training_config.trajectories_per_group = 4
 models["008"].config.training_config.groups_per_step = 12
 models["008"].config.training_config.num_epochs = 3
@@ -77,6 +75,17 @@ models["014"].config.stupid_simple_reward_fn = True
 
 models["201"] = models["008"].model_copy(deep=True)
 models["201"].name = "email-agent-201"
+
+# Model 202: like 008 but with judge-group rescoring during training
+models["202"] = models["008"].model_copy(deep=True)
+models["202"].name = "email-agent-202"
+# Ensure training config exists and enable the new flag
+assert models["202"].config.training_config is not None
+models["202"].config.training_config.rescore_with_judge_group = True
+
+models["203"] = models["201"].model_copy(deep=True)
+models["203"].name = "email-agent-203"
+
 
 parser = argparse.ArgumentParser(
     description="Train one or more models (comma separated)."

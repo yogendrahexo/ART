@@ -2,7 +2,7 @@ import art
 from art.local import LocalBackend
 import asyncio
 from dotenv import load_dotenv
-from typing import List
+from typing import List, cast
 from rollout import rollout
 from art_e.data.query_iterators import load_synthetic_queries
 from art_e.data.types_enron import SyntheticQuery
@@ -10,6 +10,8 @@ from art_e.data.local_email_db import generate_database
 from art.utils import iterate_dataset
 from art_e.project_types import ProjectPolicyConfig
 from art_e.evaluate.benchmark import benchmark_model
+from art_e.judge_group import judge_group
+from art_e.rollout import ProjectTrajectory
 import os
 
 load_dotenv()
@@ -77,6 +79,16 @@ async def train(model: art.TrainableModel[ProjectPolicyConfig]):
                 )
             )
 
+            # Optionally rescore each trajectory group with the LLM-judge before training.
+            if model.config.training_config.rescore_with_judge_group:
+                # Run the rescoring concurrently for better throughput.
+                await asyncio.gather(
+                    *(
+                        judge_group(cast(list[ProjectTrajectory], g.trajectories))
+                        for g in groups
+                    )
+                )
+
             await model.train(
                 groups,
                 config=art.TrainConfig(
@@ -104,7 +116,7 @@ if __name__ == "__main__":
 
     model_dict = json.loads(args.model_json)
     model_dict["config"] = ProjectPolicyConfig(**model_dict["config"])
-    model = art.TrainableModel(
+    model: art.TrainableModel[ProjectPolicyConfig] = art.TrainableModel(
         **model_dict,
     )
     asyncio.run(train(model))
