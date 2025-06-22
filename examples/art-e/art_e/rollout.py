@@ -1,5 +1,4 @@
 import art
-from typing import List, Any
 from art_e.data.types_enron import SyntheticQuery
 from art import Trajectory
 from litellm import acompletion
@@ -7,7 +6,6 @@ import litellm
 from art_e.email_search_tools import (
     search_emails as search_emails_impl,
     read_email as read_email_impl,
-    SearchResult,
     Email,
 )
 from langchain_core.utils.function_calling import convert_to_openai_tool
@@ -19,9 +17,6 @@ from litellm.types.utils import Choices, ModelResponse, Message
 from dataclasses import asdict
 from art.utils.litellm import convert_litellm_choice_to_openai
 from dataclasses import dataclass
-import os
-from openpipe import AsyncOpenPipe
-from datetime import datetime
 from art_e.project_types import ProjectPolicyConfig
 import textwrap
 from tenacity import retry, stop_after_attempt
@@ -31,15 +26,9 @@ from pydantic import BaseModel, Field, validate_call, ValidationError
 from rich import print
 
 litellm.cache = Cache(type=LiteLLMCacheType.DISK)
+litellm.drop_params = True
 # litellm._turn_on_debug()
 logging.getLogger("weave.trace.op").setLevel(logging.WARNING)
-
-
-# Initialize OpenPipe client (ensure OPENPIPE_API_KEY is in your .env)
-if os.getenv("OPENPIPE_API_KEY"):
-    op_client = AsyncOpenPipe()
-else:
-    op_client = None
 
 
 @dataclass
@@ -199,11 +188,11 @@ class ProjectTrajectory(Trajectory):
 
 @retry(stop=stop_after_attempt(3))
 @weave.op(tracing_sample_rate=0.05)  # type: ignore
+# @weave.op()  # type: ignore
 async def rollout(
     model: art.Model[ProjectPolicyConfig],
     scenario: SyntheticQuery,
 ) -> ProjectTrajectory:
-    rollout_start_time = datetime.now()
     rubric = FinalRubric()
     traj = ProjectTrajectory(
         messages_and_choices=[],
@@ -267,11 +256,12 @@ async def rollout(
             (str) the final answer to the user's query
         """
 
+        rubric.attempted_answer = True
+        traj.generated_answer = answer
+
         if answer == "I don't know":
             rubric.returned_i_dont_know = True
         else:
-            rubric.attempted_answer = True
-            traj.generated_answer = answer
             async with traj.track_duration("determine_if_answer_is_correct"):
                 judge_response = await judge_correctness(answer, scenario)
                 traj.log(f"Correctness judge response: {judge_response}")
@@ -284,7 +274,7 @@ async def rollout(
         return_final_answer,
     ]
 
-    traj.tools = [convert_to_openai_tool(t) for t in tools]
+    traj.tools = [convert_to_openai_tool(t) for t in tools]  # type: ignore
 
     traj.messages_and_choices = [
         {"role": "system", "content": system_prompt},
@@ -309,10 +299,11 @@ async def rollout(
                 base_url=model.inference_base_url,
                 messages=traj.messages(),
                 caching=not model.trainable,
+                # caching=False,
                 api_key=model.inference_api_key,
                 max_completion_tokens=model.config.max_tokens,
                 tools=traj.tools,
-                tool_choice=None if model.trainable else "required",
+                # tool_choice=None if model.trainable else "required",
             )  # type: ignore
 
         assert isinstance(llm_response, ModelResponse)
@@ -385,10 +376,10 @@ if __name__ == "__main__":
     traj = asyncio.run(
         rollout(
             art.Model(
-                name="gpt-4o",
+                name="openrouter/qwen/qwen3-32b",
                 project="email_agent",
                 config=ProjectPolicyConfig(
-                    litellm_model_name="openai/gpt-4o",
+                    litellm_model_name="openrouter/qwen/qwen3-32b",
                 ),
             ),
             scenario,

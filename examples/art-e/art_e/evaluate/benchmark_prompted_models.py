@@ -10,15 +10,22 @@ from art_e.data.local_email_db import generate_database
 from art_e.project_types import ProjectPolicyConfig
 from art_e.evaluate.benchmark import benchmark_model
 import os
+import weave
 
 load_dotenv()
 generate_database()
 
+# Turn this on to trace rollouts to weave.
+# weave.init(project_name="email_agent")
+
 MODELS_TO_BENCHMARK = [
-    ("gpt-4o", "openai/gpt-4o"),
-    ("gpt-4.1", "openai/gpt-4.1"),
-    ("o4-mini", "openai/o4-mini"),
-    ("o3", "openai/o3"),
+    # ("gpt-4o", "openai/gpt-4o"),
+    # ("gpt-4.1", "openai/gpt-4.1"),
+    # ("o4-mini", "openai/o4-mini"),
+    # ("o3", "openai/o3"),
+    # ("qwen3-235b", "openrouter/qwen/qwen3-235b-a22b"),
+    ("qwen3-32b", "deepinfra/Qwen/Qwen3-32B"),
+    ("deepseek-r1", "deepinfra/deepseek-ai/DeepSeek-R1"),
 ]
 
 TEST_SET_ENTRIES = 100

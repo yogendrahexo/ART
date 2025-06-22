@@ -80,11 +80,15 @@ async def train(model: art.TrainableModel[ProjectPolicyConfig]):
             )
 
             # Optionally rescore each trajectory group with the LLM-judge before training.
-            if model.config.training_config.rescore_with_judge_group:
+            training_cfg = model.config.training_config
+            if training_cfg.use_judge_group_variant is not None:
                 # Run the rescoring concurrently for better throughput.
                 await asyncio.gather(
                     *(
-                        judge_group(cast(list[ProjectTrajectory], g.trajectories))
+                        judge_group(
+                            cast(list[ProjectTrajectory], g.trajectories),
+                            training_cfg,
+                        )
                         for g in groups
                     )
                 )

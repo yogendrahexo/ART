@@ -81,11 +81,24 @@ models["202"] = models["008"].model_copy(deep=True)
 models["202"].name = "email-agent-202"
 # Ensure training config exists and enable the new flag
 assert models["202"].config.training_config is not None
-models["202"].config.training_config.rescore_with_judge_group = True
+models["202"].config.training_config.use_judge_group_variant = "v1"
 
 models["203"] = models["201"].model_copy(deep=True)
 models["203"].name = "email-agent-203"
 
+# Model 204: like 202 but with judge-group rescoring variant v2
+models["204"] = models["202"].model_copy(deep=True)
+models["204"].name = "email-agent-204"
+# Ensure training config exists and enable the v2 flag
+assert models["204"].config.training_config is not None
+models["204"].config.training_config.use_judge_group_variant = "v2"
+
+# Model 205: like 204 but using Gemini 2.5 Flash as the judge-group model
+models["205"] = models["204"].model_copy(deep=True)
+models["205"].name = "email-agent-205"
+# Ensure training config exists and set the judge group model
+assert models["205"].config.training_config is not None
+models["205"].config.training_config.judge_group_model_name = "gemini/gemini-2.5-flash"
 
 parser = argparse.ArgumentParser(
     description="Train one or more models (comma separated)."
