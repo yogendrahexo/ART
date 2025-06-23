@@ -355,6 +355,14 @@ async def rollout(
                 rubric.bad_tool_call_name = True
                 break
 
+        # If we encountered an invalid tool name or arguments, we cannot
+        # respond to the tool call properly. Break out of the main loop to
+        # avoid sending an incomplete tool interaction back to the LLM, which
+        # would cause the "assistant message with 'tool_calls' must be
+        # followed by tool messages" error.
+        if rubric.bad_tool_call_name or rubric.bad_tool_call_args:
+            break
+
     reward = calculate_reward(model.config, rubric, traj)
     traj.reward = reward
     traj.metrics = rubric.to_metrics()

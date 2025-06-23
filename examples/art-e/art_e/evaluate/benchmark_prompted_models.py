@@ -20,12 +20,15 @@ generate_database()
 
 MODELS_TO_BENCHMARK = [
     # ("gpt-4o", "openai/gpt-4o"),
-    # ("gpt-4.1", "openai/gpt-4.1"),
-    # ("o4-mini", "openai/o4-mini"),
-    # ("o3", "openai/o3"),
+    # ("gpt-4.1-mini", "openai/gpt-4.1-mini"),
+    ("gpt-4.1", "openai/gpt-4.1"),
+    ("o4-mini", "openai/o4-mini"),
+    ("o3", "openai/o3"),
     # ("qwen3-235b", "openrouter/qwen/qwen3-235b-a22b"),
     ("qwen3-32b", "deepinfra/Qwen/Qwen3-32B"),
     ("deepseek-r1", "deepinfra/deepseek-ai/DeepSeek-R1"),
+    ("gemini-2.5-flash", "gemini/gemini-2.5-flash"),
+    ("gemini-2.5-pro", "gemini/gemini-2.5-pro"),
 ]
 
 TEST_SET_ENTRIES = 100
@@ -40,7 +43,7 @@ async def main():
             project="email_agent",
             config=ProjectPolicyConfig(litellm_model_name=model_id),
         )
-        await model.register(backend)
+        # await model.register(backend)
         models.append(model)
 
     results = await asyncio.gather(

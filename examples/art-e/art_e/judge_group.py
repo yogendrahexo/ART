@@ -7,6 +7,7 @@ from textwrap import dedent
 import tenacity
 from tqdm.asyncio import tqdm
 from pydantic import BaseModel, Field
+import weave
 
 
 class JudgeGroupScore(BaseModel):
@@ -21,11 +22,10 @@ class JudgeGroupResponse(BaseModel):
     scores: List[JudgeGroupScore]
 
 
-@tenacity.retry(
-    stop=tenacity.stop_after_attempt(3),
-    wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
-)
+@tenacity.retry(stop=tenacity.stop_after_attempt(10))
+@weave.op(tracing_sample_rate=0.05)  # type: ignore
 async def judge_group(
+    _model_name: str,  # Just included for observability
     rollouts: list[ProjectTrajectory],
     training_config: TrainingConfig | None = None,
     *,
@@ -182,6 +182,11 @@ if __name__ == "__main__":
                     project="email_agent",
                     config=ProjectPolicyConfig(
                         litellm_model_name=litellm_name,
+                        training_config=TrainingConfig(
+                            use_judge_group_variant="v2",
+                            judge_group_model_name="openrouter/qwen/qwen3-32b",
+                            # judge_group_model_name="gemini/gemini-2.5-flash",
+                        ),
                     ),
                 )
             )

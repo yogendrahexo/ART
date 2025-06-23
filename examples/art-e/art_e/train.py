@@ -83,15 +83,43 @@ async def train(model: art.TrainableModel[ProjectPolicyConfig]):
             training_cfg = model.config.training_config
             if training_cfg.use_judge_group_variant is not None:
                 # Run the rescoring concurrently for better throughput.
-                await asyncio.gather(
-                    *(
-                        judge_group(
-                            cast(list[ProjectTrajectory], g.trajectories),
-                            training_cfg,
-                        )
-                        for g in groups
+                # If any call to `judge_group` fails, we don't want the entire
+                # training run to crash. We therefore collect exceptions and
+                # log a clear warning that can be grepped later.
+
+                judge_tasks = [
+                    judge_group(
+                        model.name,
+                        cast(list[ProjectTrajectory], g.trajectories),
+                        training_cfg,
                     )
-                )
+                    for g in groups
+                ]
+
+                results = await asyncio.gather(*judge_tasks, return_exceptions=True)
+
+                # Determine which groups succeeded.
+                successful_groups = []
+                for grp_idx, (g, res) in enumerate(zip(groups, results)):
+                    if isinstance(res, Exception):
+                        print(
+                            f"WARNING:JUDGE_GROUP_FAILED group={grp_idx} step={global_step}: {res!r}",
+                            flush=True,
+                        )
+                    else:
+                        successful_groups.append(g)
+
+                # Replace `groups` with the subset that passed judgement so
+                # that training only uses trajectories with judge rewards.
+                groups = successful_groups
+
+                # If every group failed, skip this training step entirely.
+                if not groups:
+                    print(
+                        f"WARNING:ALL_JUDGE_GROUPS_FAILED step={global_step}; skipping training step",
+                        flush=True,
+                    )
+                    continue  # Proceed to next batch/epoch without training.
 
             await model.train(
                 groups,
