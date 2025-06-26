@@ -10,11 +10,11 @@ dependencies = [
     "openai>=1.65.5",
     "seaborn>=0.13.2",
     "setuptools>=78.1.0",
-    "torch>=2.5.1",
+    "torch>=2.7.0",
     "torchao>=0.9.0",
     "unsloth==2025.5.1 ; sys_platform == 'linux'",
     "unsloth-zoo==2025.5.1 ; sys_platform == 'linux'",
-    "vllm==0.8.5.post1",
+    "vllm>=0.9.0",
     "wandb>=0.19.8",
     "weave>=0.51.51",
     "peft>=0.14.0",
@@ -27,10 +27,12 @@ dependencies = [
     "hf-xet>=1.1.0",
     "panza",
     "semver>=3.0.4",
+    "torchtune",
 ]
 
 [project.optional-dependencies]
 swebench = [
+    "aiolimiter>=1.2.1",
     "langfuse>=2.60.7",
     "modal>=1.0.1",
     "sweagent",
@@ -71,3 +73,4 @@ override-dependencies = [
 [tool.uv.sources]
 panza = { git = "https://github.com/corbt/panza.git" }
 sweagent = { git = "https://github.com/bradhilton/SWE-agent.git" }
+torchtune = { git = "https://github.com/pytorch/torchtune.git", rev = "2344509cf83bd886538fe3e8263e5145d1afb5c2" }
