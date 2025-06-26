@@ -43,7 +43,7 @@ async def main():
             project="email_agent",
             config=ProjectPolicyConfig(litellm_model_name=model_id),
         )
-        # await model.register(backend)
+        await model.register(backend)
         models.append(model)
 
     results = await asyncio.gather(
@@ -53,6 +53,7 @@ async def main():
         ]
     )
     for model in models:
+        print(f"Pushing {model.name} to S3")
         await backend._experimental_push_to_s3(
             model,
             s3_bucket=os.environ["BACKUP_BUCKET"],

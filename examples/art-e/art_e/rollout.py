@@ -50,7 +50,13 @@ class FinalRubric:
     completion_tokens: int = 0
 
     def to_metrics(self) -> dict[str, float | int]:
-        return {k: int(v) for k, v in asdict(self).items()}
+        metrics: dict[str, float | int] = {k: int(v) for k, v in asdict(self).items()}
+        metrics["failed_format_validation"] = int(
+            self.bad_tool_call_name
+            or self.bad_tool_call_args
+            or self.cant_parse_tool_call
+        )
+        return metrics
 
 
 def calculate_reward(
@@ -315,7 +321,7 @@ async def rollout(
         # Our rollout is only set up to handle one tool call at a time, so just ignore any parallel tool calls.
         if choice.message.tool_calls is not None and len(choice.message.tool_calls) > 1:
             choice.message.tool_calls = choice.message.tool_calls[:1]
-        traj.messages_and_choices.append(convert_litellm_choice_to_openai(choice))
+        traj.messages_and_choices.append(choice.message)  # type: ignore
 
         if choice.message.tool_calls is None:
             rubric.bad_tool_call_name = True

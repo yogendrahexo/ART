@@ -112,7 +112,6 @@ async def judge_group(
     judge_model_name = (
         training_config.judge_group_model_name
         if training_config is not None
-        and hasattr(training_config, "judge_group_model_name")
         else "openai/o3"
     )
 
@@ -146,8 +145,10 @@ async def judge_group(
     assert len(parsed.scores) == len(rollouts)
 
     for idx, (traj, score) in enumerate(zip(rollouts, parsed.scores)):
+        traj.metrics["judge_group_reward"] = score.score
         traj.reward = score.score
-        traj.metrics["judge_group_reward"] = traj.reward
+        if traj.metrics.get("failed_format_validation", 0) > 0:
+            traj.reward = 0
         traj.log(f"Judge group explanation: {score.explanation}")
 
     return rollouts

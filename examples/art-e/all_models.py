@@ -1,5 +1,6 @@
 import art
 from art_e.project_types import ProjectPolicyConfig, TrainingConfig
+from typing import cast
 
 models = {
     "002": art.TrainableModel(
@@ -104,3 +105,44 @@ models["207"].name = "email-agent-207"
 assert models["207"].config.training_config is not None
 models["207"].config.training_config.training_dataset_size = 12
 models["207"].config.training_config.num_epochs = 500
+
+models["208"] = models["206"].model_copy(deep=True)
+models["208"].name = "email-agent-208"
+
+# Model 209: like 205 but with min reward std dev filtering enabled
+models["209"] = models["205"].model_copy(deep=True)
+models["209"].name = "email-agent-209"
+assert models["209"].config.training_config is not None
+models["209"].config.training_config.minimum_reward_std_dev = 0.05
+
+# Model 210-* sweep: based on 206 but varying training_dataset_size across powers of 4
+# Generates models 210-1, 210-4, 210-16, 210-64, 210-256, 210-1024, 210-4096
+for _size in [1, 4, 16, 64, 256, 1024, 4096]:
+    key = f"210-{_size}"
+    models[key] = models["206"].model_copy(deep=True)
+    models[key].name = f"ea-{key}"
+    # Ensure training config exists
+    assert models[key].config.training_config is not None
+    tc = cast(TrainingConfig, models[key].config.training_config)
+    # Set the dataset size
+    tc.training_dataset_size = _size
+    # For very small datasets, match groups_per_step to the dataset size (<=16)
+    if _size <= 16:
+        tc.groups_per_step = _size
+    # Compute num_epochs so that total training steps ~= 600.
+    # Approximation: total_steps ≈ num_epochs * (training_dataset_size / groups_per_step)
+    # => num_epochs ≈ 600 * groups_per_step / training_dataset_size
+    tc.num_epochs = max(1, round(600 * tc.groups_per_step / _size))
+
+# Model 210-16-s* variants: explore robustness to different data mixes by varying the random seed.
+for _seed in [1, 2, 3]:
+    key = f"210-16-s{_seed}"
+    models[key] = models["210-16"].model_copy(deep=True)
+    models[key].name = f"ea-{key}"
+    # Ensure training config exists and set the seed
+    assert models[key].config.training_config is not None
+    tc_seeded = cast(TrainingConfig, models[key].config.training_config)
+    tc_seeded.training_dataset_seed = _seed
+
+models["211"] = models["206"].model_copy(deep=True)
+models["211"].name = "email-agent-211"
