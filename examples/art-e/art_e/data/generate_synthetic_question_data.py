@@ -220,6 +220,7 @@ async def generate_queries_for_batch(
                 how_realistic=q.how_realistic,
                 inbox_address=inbox_address,
                 query_date=query_date.strftime("%Y-%m-%d"),
+                split="train",
             )
         )
     print(

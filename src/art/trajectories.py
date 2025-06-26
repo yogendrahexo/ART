@@ -32,6 +32,9 @@ class Trajectory(pydantic.BaseModel):
         super().__init__(**data)
         self.start_time = datetime.now()
 
+    def log(self, message: str) -> None:
+        self.logs.append(message)
+
     def finish(self) -> "Trajectory":
         duration = (datetime.now() - self.start_time).total_seconds()
         self.metrics["duration"] = duration
