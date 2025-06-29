@@ -94,7 +94,22 @@ def main():
     uv remove openpipe-art
     uv add --editable ~/ART
     uv add awscli
-
+    
+    echo "Testing environment setup..."
+        uv run python -c "
+import torch
+import transformers
+import accelerate
+print('\\nLibrary versions check:')
+print(f'PyTorch version: {torch.__version__}')
+print(f'Transformers version: {transformers.__version__}')
+print(f'Accelerate version: {accelerate.__version__}')
+print('\\nVerifying is_torch_version is defined in Accelerate:')
+from accelerate.utils import is_torch_version
+print('is_torch_version is defined correctly!')
+print('\\nEnvironment setup test passed successfully!')
+"
+    
     echo "Running training script..."
     uv run python art_e/train.py
     """
