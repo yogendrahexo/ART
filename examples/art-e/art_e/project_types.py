@@ -20,6 +20,7 @@ class TrainingConfig(BaseModel):
     # Random seed to control which subset of the training data is sampled. When None, the sampler can
     # choose its own default (e.g., derive from the current time).
     training_dataset_seed: int | None = None
+    allow_training_without_logprobs: bool = False
 
 
 class ProjectPolicyConfig(BaseModel):

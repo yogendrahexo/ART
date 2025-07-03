@@ -1,3 +1,4 @@
+import os
 import art
 from art_e.data.types_enron import SyntheticQuery
 from art import Trajectory
@@ -29,7 +30,8 @@ litellm.cache = Cache(type=LiteLLMCacheType.DISK)
 litellm.drop_params = True
 # litellm._turn_on_debug()
 logging.getLogger("weave.trace.op").setLevel(logging.WARNING)
-
+import dotenv
+dotenv.load_dotenv()
 
 @dataclass
 class FinalRubric:
@@ -167,13 +169,24 @@ Return your judgement as **pure JSON** (no markdown) with this exact schema:
             ),
         },
     ]
+        
+
+    # Azure OpenAI configuration
+    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+    deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
 
     response = await acompletion(
         # model="gemini/gemini-2.5-flash",
-        model="openai/gpt-4.1",
+        # model="openai/gpt-4.1",
         messages=messages,
         caching=True,
         response_format=CorrectnessJudgeResponse,
+        
+        model=f"azure/{deployment_name}",
+        api_key=azure_api_key,
+        api_base=azure_endpoint,
+        api_version="2024-05-01-preview",
     )
 
     first_choice = response.choices[0]  # type: ignore[attr-defined]

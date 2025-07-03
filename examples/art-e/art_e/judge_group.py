@@ -1,3 +1,4 @@
+import os
 from art_e.rollout import ProjectTrajectory
 from art_e.project_types import TrainingConfig
 from typing import List, cast
@@ -8,7 +9,9 @@ import tenacity
 from tqdm.asyncio import tqdm
 from pydantic import BaseModel, Field
 import weave
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class JudgeGroupScore(BaseModel):
     rollout_id: str = Field(description="The id of the rollout being scored.")
@@ -109,19 +112,28 @@ async def judge_group(
     # runs do not have to set anything.  If `training_config` is None, we also
     # fall back to "openai/o3".
 
+    # Azure OpenAI configuration
+    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+    deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+
     judge_model_name = (
-        training_config.judge_group_model_name
-        if training_config is not None
-        else "openai/o3"
+        # training_config.judge_group_model_name
+        # if training_config is not None
+        # else "openai/o3"
+        f"azure/{deployment_name}"
     )
 
     messages = [
         {"role": "system", "content": rubric_text},
         {"role": "user", "content": user_text},
     ]
-
+    
     response = await acompletion(
         model=judge_model_name,
+        api_key=azure_api_key,
+        api_base=azure_endpoint,
+        api_version="2024-05-01-preview",
         messages=messages,
         response_format=JudgeGroupResponse,
         caching=True,

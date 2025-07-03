@@ -105,7 +105,7 @@ def tokenize_trajectory(
         ):
             last_assistant_index = i
         elif not isinstance(message_or_choice, dict) and (
-            message_or_choice.logprobs or allow_training_without_logprobs
+            getattr(message_or_choice, 'logprobs', None) or allow_training_without_logprobs
         ):
             last_assistant_index = i
     # If there are no trainable assistant messages, return None
@@ -171,11 +171,11 @@ def tokenize_trajectory(
             continue
         choice = message_or_choice
         assert (
-            choice.logprobs or allow_training_without_logprobs
+            getattr(choice, 'logprobs', None) or allow_training_without_logprobs
         ), "Chat completion choices must have logprobs"
-        if not choice.logprobs:
+        if not getattr(choice, 'logprobs', None):
             continue
-        token_logprobs = choice.logprobs.content or choice.logprobs.refusal or []
+        token_logprobs = getattr(choice, 'logprobs', None).content or getattr(choice, 'logprobs', None).refusal or []
         sentinal_index = token_ids.index(sentinal_token_id)
         token_ids[sentinal_index : sentinal_index + 1] = (
             int(token_logprob.token.split(":")[1]) for token_logprob in token_logprobs

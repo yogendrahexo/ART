@@ -63,6 +63,7 @@ class Model(
     # If set, this will be used instead of `self.name` when calling the
     # inference endpoint.
     inference_model_name: str | None = None
+    api_version: str | None = None
 
     _backend: Optional["Backend"] = None
     _s3_bucket: str | None = None
@@ -78,6 +79,7 @@ class Model(
         inference_api_key: str | None = None,
         inference_base_url: str | None = None,
         inference_model_name: str | None = None,
+        api_version: str | None = None,
         **kwargs: Never,
     ) -> None:
         super().__init__(
@@ -87,6 +89,7 @@ class Model(
             inference_api_key=inference_api_key,
             inference_base_url=inference_base_url,
             inference_model_name=inference_model_name,
+            api_version=api_version,
             **kwargs,
         )
 
@@ -100,6 +103,7 @@ class Model(
         inference_api_key: str | None = None,
         inference_base_url: str | None = None,
         inference_model_name: str | None = None,
+        api_version: str | None = None,
     ) -> "Model[None]": ...
 
     @overload
@@ -112,6 +116,7 @@ class Model(
         inference_api_key: str | None = None,
         inference_base_url: str | None = None,
         inference_model_name: str | None = None,
+        api_version: str | None = None,
     ) -> "Model[ModelConfig]": ...
 
     def __new__(

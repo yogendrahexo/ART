@@ -18,6 +18,7 @@ models = {
                 val_set_size=100,
                 training_dataset_size=4000,
                 num_epochs=1,
+                allow_training_without_logprobs=True,
             ),
         ),
     )
